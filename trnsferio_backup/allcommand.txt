@@ -1,0 +1,3 @@
+ngrok start --all --log=stdout --config C:\Users\heman\OneDrive\Desktop\Complete\trnsferio\ngrok.yml
+
+
