@@ -9,10 +9,14 @@ const path = require('path');
 const fs = require('fs');
 const db = require("./db");
 
+// Import routes
+const signupRoutes = require('./routes/signupRoutes');
+
 const app = express();
 
 // ==================== CONFIG ====================
-const PORT = process.env.PORT || 5000;
+// const PORT = process.env.PORT || 5000;
+const PORT = 5001;
 const JWT_SECRET = process.env.JWT_SECRET || 'please_change_this_secret';
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '15m'; // example: '15m'
 
@@ -96,6 +100,8 @@ async function authenticateMiddleware(req, res, next) {
 
 // ==================== ROUTES SETUP ====================
 
+// Register modular routes
+app.use('/api/signup', signupRoutes);
 // Root endpoint
 app.get("/", (req, res) => {
   res.send("✅ Server is running. Use /api/health, /api/signup, or /api/check-discount.");

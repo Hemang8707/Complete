@@ -1,40 +1,47 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 // API configuration - Backend runs on port 5000
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 function Signup() {
-  const [formData, setFormData] = useState({ 
-    dealerName: "",
+  const navigate = useNavigate();
+  
+  // ==================== STATE ====================
+  const [step, setStep] = useState(1); // 1: Type Selection, 2: Form, 3: OTP Verification
+  const [userType, setUserType] = useState(null); // 'individual' or 'enterprise'
+  
+  const [formData, setFormData] = useState({
+    dealerName: "",      // For individual: "Name", For enterprise: "Dealer Name"
     mobileNumber: "",
-    email: "", 
-    gstNumber: "",
-    cancelCheque: null,
-    shopPhoto: null,
-    ownerName: "",
-    ownerMobile: "",
-    enterpriseType: "",
+    email: "",
+    ownerName: "",       // Enterprise only
+    ownerMobile: "",     // Enterprise only
+    gstNumber: "",       // Enterprise only
+    enterpriseType: "",  // Enterprise only
+    cancelCheque: null,  // Enterprise only (for now)
+    shopPhoto: null,     // Enterprise only
     password: "",
     confirmPassword: ""
   });
 
+  const [otp, setOtp] = useState("");
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
-  const [dealerCode, setDealerCode] = useState(""); // New state for dealer code
+  const [dealerCode, setDealerCode] = useState("");
+  const [otpTimer, setOtpTimer] = useState(0);
 
-  // Enhanced validation function
+  // ==================== VALIDATION ====================
   const validateForm = () => {
     const newErrors = {};
 
-    // Required fields validation
-    if (!formData.dealerName.trim()) newErrors.dealerName = "Dealer name is required";
+    // Common validations
+    if (!formData.dealerName.trim()) {
+      newErrors.dealerName = userType === 'individual' ? "Name is required" : "Dealer name is required";
+    }
     if (!formData.mobileNumber.trim()) newErrors.mobileNumber = "Mobile number is required";
     if (!formData.email.trim()) newErrors.email = "Email is required";
-    if (!formData.ownerName.trim()) newErrors.ownerName = "Owner name is required";
-    if (!formData.ownerMobile.trim()) newErrors.ownerMobile = "Owner mobile is required";
-    if (!formData.gstNumber.trim()) newErrors.gstNumber = "GST number is required";
-    if (!formData.enterpriseType) newErrors.enterpriseType = "Enterprise type is required";
     if (!formData.password) newErrors.password = "Password is required";
     if (!formData.confirmPassword) newErrors.confirmPassword = "Confirm password is required";
 
@@ -48,10 +55,6 @@ function Signup() {
       newErrors.mobileNumber = "Mobile number must be 10 digits";
     }
 
-    if (formData.ownerMobile && !/^\d{10}$/.test(formData.ownerMobile)) {
-      newErrors.ownerMobile = "Owner mobile must be 10 digits";
-    }
-
     // Password validation
     if (formData.password && formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters";
@@ -61,17 +64,32 @@ function Signup() {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
-    // File validation
-    if (!formData.cancelCheque) {
-      newErrors.cancelCheque = "Cancel cheque photo is required";
-    }
+    // Enterprise-specific validations
+    if (userType === 'enterprise') {
+      if (!formData.ownerName.trim()) newErrors.ownerName = "Owner name is required";
+      if (!formData.ownerMobile.trim()) newErrors.ownerMobile = "Owner mobile is required";
+      if (!formData.gstNumber.trim()) newErrors.gstNumber = "GST number is required";
+      if (!formData.enterpriseType) newErrors.enterpriseType = "Enterprise type is required";
+      
+      if (formData.ownerMobile && !/^\d{10}$/.test(formData.ownerMobile)) {
+        newErrors.ownerMobile = "Owner mobile must be 10 digits";
+      }
 
-    if (!formData.shopPhoto) {
-      newErrors.shopPhoto = "Shop photo is required";
+      // File validations (optional for now - can be uploaded later)
+      // if (!formData.cancelCheque) newErrors.cancelCheque = "Cancel cheque photo is required";
+      // if (!formData.shopPhoto) newErrors.shopPhoto = "Shop photo is required";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // ==================== HANDLERS ====================
+  const handleTypeSelect = (type) => {
+    setUserType(type);
+    setStep(2);
+    setErrors({});
+    setSubmitMessage("");
   };
 
   const handleChange = (e) => {
@@ -79,23 +97,31 @@ function Signup() {
     
     if (type === 'file') {
       setFormData({ ...formData, [name]: files[0] });
-      // Clear error when file is selected
-      if (files[0]) {
-        setErrors({ ...errors, [name]: '' });
-      }
+      if (files[0]) setErrors({ ...errors, [name]: '' });
     } else {
       setFormData({ ...formData, [name]: value });
-      // Clear error when user starts typing
-      if (errors[name]) {
-        setErrors({ ...errors, [name]: '' });
-      }
+      if (errors[name]) setErrors({ ...errors, [name]: '' });
     }
   };
 
+  const handleBack = () => {
+    if (step === 2) {
+      setStep(1);
+      setUserType(null);
+      setErrors({});
+      setSubmitMessage("");
+    } else if (step === 3) {
+      setStep(2);
+      setOtp("");
+      setErrors({});
+      setSubmitMessage("");
+    }
+  };
+
+  // Submit form and send OTP
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form
     if (!validateForm()) {
       setSubmitMessage("❌ Please fix the errors above");
       return;
@@ -103,120 +129,229 @@ function Signup() {
 
     setIsSubmitting(true);
     setSubmitMessage("");
-    setDealerCode(""); // Reset dealer code
 
     try {
-      // Create FormData for file uploads
-      const submitData = new FormData();
-      
-      // Append all form fields with exact names expected by backend
-      submitData.append('dealerName', formData.dealerName);
-      submitData.append('mobileNumber', formData.mobileNumber);
-      submitData.append('email', formData.email);
-      submitData.append('ownerName', formData.ownerName);
-      submitData.append('ownerMobile', formData.ownerMobile);
-      submitData.append('gstNumber', formData.gstNumber);
-      submitData.append('enterpriseType', formData.enterpriseType);
-      submitData.append('password', formData.password);
-      submitData.append('confirmPassword', formData.confirmPassword);
-      
-      if (formData.cancelCheque) {
-        submitData.append('cancelCheque', formData.cancelCheque);
-      }
-      if (formData.shopPhoto) {
-        submitData.append('shopPhoto', formData.shopPhoto);
-      }
-
-      console.log("📤 Sending signup request to:", `${API_BASE}/api/signup`);
-
-      const response = await fetch(`${API_BASE}/api/signup`, {
+      const response = await fetch(`${API_BASE}/api/signup/initiate`, {
         method: 'POST',
-        body: submitData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userType,
+          dealerName: formData.dealerName,
+          mobileNumber: formData.mobileNumber,
+          email: formData.email,
+          ownerName: formData.ownerName || formData.dealerName,
+          ownerMobile: formData.ownerMobile || formData.mobileNumber,
+          gstNumber: formData.gstNumber,
+          enterpriseType: formData.enterpriseType,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword
+        })
       });
 
       const result = await response.json();
       console.log("📥 Server response:", result);
 
-      if (response.ok && result.success) {
-        // Set the dealer code received from backend
-        setDealerCode(result.dealerCode);
-        setSubmitMessage(`✅ Sign up successful! Your account has been created. Your Dealer Code: ${result.dealerCode}`);
-        
-        // Reset form
-        setFormData({
-          dealerName: "",
-          mobileNumber: "",
-          email: "", 
-          gstNumber: "",
-          cancelCheque: null,
-          shopPhoto: null,
-          ownerName: "",
-          ownerMobile: "",
-          enterpriseType: "",
-          password: "",
-          confirmPassword: ""
-        });
-        
-        // Clear file inputs
-        document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
-        setErrors({});
-        
+      if (result.success) {
+        setSubmitMessage("✅ OTP sent to your email!");
+        setStep(3);
+        startOtpTimer();
       } else {
-        // Show detailed error message from server
-        const errorMsg = result.error || result.message || 'Failed to create account';
-        setSubmitMessage(`❌ Error: ${errorMsg}`);
+        setSubmitMessage(`❌ ${result.error || 'Failed to send OTP'}`);
       }
     } catch (error) {
       console.error('Signup error:', error);
-      setSubmitMessage("❌ Network error. Please check if the backend server is running on port 5000.");
+      setSubmitMessage("❌ Network error. Please check if the server is running.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="signin-container">
-      <div className="signin-box">
-        {/* <h2 className="signin-title"> SIGN UP</h2> */}
-        <div className="signin-form">
-          <div className="form-columns">
-            <div className="form-column">
-              <div className="input-group">
-                <input
-                  type="text"
-                  name="dealerName"
-                  placeholder="🏪 Dealer Name"
-                  value={formData.dealerName}
-                  onChange={handleChange}
-                  className={errors.dealerName ? 'error' : ''}
-                />
-                {errors.dealerName && <span className="error-text">{errors.dealerName}</span>}
-              </div>
+  // Verify OTP
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    
+    if (!otp || otp.length !== 6) {
+      setErrors({ otp: "Please enter the 6-digit OTP" });
+      return;
+    }
 
-              <div className="input-group">
-                <input
-                  type="tel"
-                  name="mobileNumber"
-                  placeholder="📱 Mobile Number"
-                  value={formData.mobileNumber}
-                  onChange={handleChange}
-                  className={errors.mobileNumber ? 'error' : ''}
-                />
-                {errors.mobileNumber && <span className="error-text">{errors.mobileNumber}</span>}
-              </div>
+    setIsSubmitting(true);
+    setSubmitMessage("");
 
-              <div className="input-group">
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="✉️ Email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={errors.email ? 'error' : ''}
-                />
-                {errors.email && <span className="error-text">{errors.email}</span>}
-              </div>
+    try {
+      const response = await fetch(`${API_BASE}/api/signup/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          otp: otp
+        })
+      });
 
+      const result = await response.json();
+      console.log("📥 OTP verification response:", result);
+
+      if (result.success) {
+        setDealerCode(result.dealerCode);
+        setSubmitMessage(`✅ ${result.message}`);
+        // Success - don't auto redirect, let user click button
+      } else {
+        if (result.expired) {
+          setSubmitMessage("❌ OTP expired. Please request a new one.");
+        } else {
+          setSubmitMessage(`❌ ${result.error || 'Invalid OTP'}`);
+        }
+      }
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      setSubmitMessage("❌ Network error. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResendOtp = async () => {
+    if (otpTimer > 0) return;
+
+    setIsSubmitting(true);
+    setSubmitMessage("");
+
+    try {
+      const response = await fetch(`${API_BASE}/api/signup/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSubmitMessage("✅ New OTP sent to your email!");
+        startOtpTimer();
+      } else {
+        setSubmitMessage(`❌ ${result.error || 'Failed to resend OTP'}`);
+      }
+    } catch (error) {
+      setSubmitMessage("❌ Network error. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const startOtpTimer = () => {
+    setOtpTimer(60);
+    const interval = setInterval(() => {
+      setOtpTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // ==================== RENDER FUNCTIONS ====================
+
+  // Step 1: User Type Selection
+  const renderTypeSelection = () => (
+    <div className="type-selection">
+      <h2 className="selection-title">Choose Your Account Type</h2>
+      <p className="selection-subtitle">How would you like to register?</p>
+      
+      <div className="type-cards">
+        <div 
+          className="type-card" 
+          onClick={() => handleTypeSelect('individual')}
+        >
+          <div className="type-icon">👤</div>
+          <h3>Individual</h3>
+          <p>For personal use and individual dealers</p>
+          <ul className="type-features">
+            <li>✓ Simple registration</li>
+            <li>✓ No GST required</li>
+            <li>✓ Quick setup</li>
+          </ul>
+        </div>
+
+        <div 
+          className="type-card"
+          onClick={() => handleTypeSelect('enterprise')}
+        >
+          <div className="type-icon">🏢</div>
+          <h3>Enterprise</h3>
+          <p>For businesses and organizations</p>
+          <ul className="type-features">
+            <li>✓ Business registration</li>
+            <li>✓ GST compliant</li>
+            <li>✓ Full features</li>
+          </ul>
+        </div>
+      </div>
+
+      <p className="login-link">
+        Already have an account?{" "}
+        <span onClick={() => navigate('/login')}>Sign In</span>
+      </p>
+    </div>
+  );
+
+  // Step 2: Registration Form
+  const renderForm = () => (
+    <div className="signup-form-container">
+      <button className="back-button" onClick={handleBack}>
+        ← Back
+      </button>
+      
+      <h2 className="form-title">
+        {userType === 'individual' ? '👤 Individual Registration' : '🏢 Enterprise Registration'}
+      </h2>
+
+      <div className="signup-form">
+        <div className="form-columns">
+          <div className="form-column">
+            {/* Name / Dealer Name */}
+            <div className="input-group">
+              <input
+                type="text"
+                name="dealerName"
+                placeholder={userType === 'individual' ? "👤 Your Name" : "🏪 Dealer Name"}
+                value={formData.dealerName}
+                onChange={handleChange}
+                className={errors.dealerName ? 'error' : ''}
+              />
+              {errors.dealerName && <span className="error-text">{errors.dealerName}</span>}
+            </div>
+
+            {/* Mobile Number */}
+            <div className="input-group">
+              <input
+                type="tel"
+                name="mobileNumber"
+                placeholder="📱 Mobile Number"
+                value={formData.mobileNumber}
+                onChange={handleChange}
+                className={errors.mobileNumber ? 'error' : ''}
+              />
+              {errors.mobileNumber && <span className="error-text">{errors.mobileNumber}</span>}
+            </div>
+
+            {/* Email */}
+            <div className="input-group">
+              <input
+                type="email"
+                name="email"
+                placeholder="✉️ Email"
+                value={formData.email}
+                onChange={handleChange}
+                className={errors.email ? 'error' : ''}
+              />
+              {errors.email && <span className="error-text">{errors.email}</span>}
+            </div>
+
+            {/* Enterprise: Owner Name */}
+            {userType === 'enterprise' && (
               <div className="input-group">
                 <input
                   type="text"
@@ -228,7 +363,10 @@ function Signup() {
                 />
                 {errors.ownerName && <span className="error-text">{errors.ownerName}</span>}
               </div>
+            )}
 
+            {/* Enterprise: Owner Mobile */}
+            {userType === 'enterprise' && (
               <div className="input-group">
                 <input
                   type="tel"
@@ -240,7 +378,10 @@ function Signup() {
                 />
                 {errors.ownerMobile && <span className="error-text">{errors.ownerMobile}</span>}
               </div>
+            )}
 
+            {/* Enterprise: GST Number */}
+            {userType === 'enterprise' && (
               <div className="input-group">
                 <input
                   type="text"
@@ -252,120 +393,197 @@ function Signup() {
                 />
                 {errors.gstNumber && <span className="error-text">{errors.gstNumber}</span>}
               </div>
+            )}
+          </div>
+
+          <div className="form-column">
+            {/* Enterprise: File Uploads */}
+            {userType === 'enterprise' && (
+              <>
+                <div className="input-group">
+                  <div className="file-input-wrapper">
+                    <label htmlFor="cancelCheque">🏦 Cancel Cheque Photo</label>
+                    <input
+                      type="file"
+                      id="cancelCheque"
+                      name="cancelCheque"
+                      onChange={handleChange}
+                      accept="image/*,.pdf"
+                    />
+                    {formData.cancelCheque && (
+                      <span className="file-selected">Selected: {formData.cancelCheque.name}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <div className="file-input-wrapper">
+                    <label htmlFor="shopPhoto">🏪 Store Shop Photo</label>
+                    <input
+                      type="file"
+                      id="shopPhoto"
+                      name="shopPhoto"
+                      onChange={handleChange}
+                      accept="image/*"
+                    />
+                    {formData.shopPhoto && (
+                      <span className="file-selected">Selected: {formData.shopPhoto.name}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <select
+                    name="enterpriseType"
+                    value={formData.enterpriseType}
+                    onChange={handleChange}
+                    className={errors.enterpriseType ? 'error' : ''}
+                  >
+                    <option value="">🏢 Type Of Enterprise</option>
+                    <option value="sole-proprietorship">Sole Proprietorship</option>
+                    <option value="partnership">Partnership</option>
+                    <option value="private-limited">Private Limited</option>
+                    <option value="public-limited">Public Limited</option>
+                    <option value="llp">Limited Liability Partnership</option>
+                  </select>
+                  {errors.enterpriseType && <span className="error-text">{errors.enterpriseType}</span>}
+                </div>
+              </>
+            )}
+
+            {/* Password */}
+            <div className="input-group">
+              <input
+                type="password"
+                name="password"
+                placeholder="🔒 Password"
+                value={formData.password}
+                onChange={handleChange}
+                className={errors.password ? 'error' : ''}
+              />
+              {errors.password && <span className="error-text">{errors.password}</span>}
             </div>
-            
-            <div className="form-column">
-              <div className="input-group">
-                <div className="file-input-wrapper">
-                  <label htmlFor="cancelCheque">🏦 Cancel Cheque Photo</label>
-                  <input
-                    type="file"
-                    id="cancelCheque"
-                    name="cancelCheque"
-                    onChange={handleChange}
-                    accept="image/*,.pdf"
-                    className={errors.cancelCheque ? 'error' : ''}
-                  />
-                  {errors.cancelCheque && <span className="error-text">{errors.cancelCheque}</span>}
-                  {formData.cancelCheque && (
-                    <span className="file-selected">Selected: {formData.cancelCheque.name}</span>
-                  )}
-                </div>
-              </div>
 
-              <div className="input-group">
-                <div className="file-input-wrapper">
-                  <label htmlFor="shopPhoto">🏪 Store Shop Photo</label>
-                  <input
-                    type="file"
-                    id="shopPhoto"
-                    name="shopPhoto"
-                    onChange={handleChange}
-                    accept="image/*"
-                    className={errors.shopPhoto ? 'error' : ''}
-                  />
-                  {errors.shopPhoto && <span className="error-text">{errors.shopPhoto}</span>}
-                  {formData.shopPhoto && (
-                    <span className="file-selected">Selected: {formData.shopPhoto.name}</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="input-group">
-                <select
-                  name="enterpriseType"
-                  value={formData.enterpriseType}
-                  onChange={handleChange}
-                  className={errors.enterpriseType ? 'error' : ''}
-                >
-                  <option value="">🏢 Type Of Enterprise</option>
-                  <option value="sole-proprietorship">Sole Proprietorship</option>
-                  <option value="partnership">Partnership</option>
-                  <option value="private-limited">Private Limited</option>
-                  <option value="public-limited">Public Limited</option>
-                  <option value="llp">Limited Liability Partnership</option>
-                </select>
-                {errors.enterpriseType && <span className="error-text">{errors.enterpriseType}</span>}
-              </div>
-
-              <div className="input-group">
-                <input
-                  type="password"
-                  name="password"
-                  placeholder="🔒 Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={errors.password ? 'error' : ''}
-                />
-                {errors.password && <span className="error-text">{errors.password}</span>}
-              </div>
-
-              <div className="input-group">
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  placeholder="🔐 Confirm Password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className={errors.confirmPassword ? 'error' : ''}
-                />
-                {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-              </div>
+            {/* Confirm Password */}
+            <div className="input-group">
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="🔐 Confirm Password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className={errors.confirmPassword ? 'error' : ''}
+              />
+              {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
             </div>
           </div>
-          
-          {submitMessage && (
-            <div className={`message ${submitMessage.includes('✅') ? 'success' : 'error'}`}>
-              {submitMessage}
-              {dealerCode && (
-                <div className="dealer-code-display">
-                  <h3>🎉 Your Dealer Code</h3>
-                  <div className="dealer-code">{dealerCode}</div>
-                  <p>Please save this code for future reference!</p>
-                </div>
-              )}
+        </div>
+
+        {submitMessage && (
+          <div className={`message ${submitMessage.includes('✅') ? 'success' : 'error'}`}>
+            {submitMessage}
+          </div>
+        )}
+
+        <button 
+          type="submit" 
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className={isSubmitting ? 'submitting' : ''}
+        >
+          {isSubmitting ? "Sending OTP..." : "CONTINUE"}
+        </button>
+      </div>
+    </div>
+  );
+
+  // Step 3: OTP Verification
+  const renderOtpVerification = () => (
+    <div className="otp-container">
+      <button className="back-button" onClick={handleBack}>
+        ← Back
+      </button>
+
+      <div className="otp-icon">📧</div>
+      <h2 className="otp-title">Verify Your Email</h2>
+      <p className="otp-subtitle">
+        We've sent a 6-digit code to<br />
+        <strong>{formData.email}</strong>
+      </p>
+
+      <div className="otp-input-container">
+        <input
+          type="text"
+          maxLength="6"
+          value={otp}
+          onChange={(e) => {
+            const value = e.target.value.replace(/\D/g, '');
+            setOtp(value);
+            if (errors.otp) setErrors({});
+          }}
+          placeholder="● ● ● ● ● ●"
+          className={`otp-input ${errors.otp ? 'error' : ''}`}
+        />
+        {errors.otp && <span className="error-text">{errors.otp}</span>}
+      </div>
+
+      {submitMessage && (
+        <div className={`message ${submitMessage.includes('✅') ? 'success' : 'error'}`}>
+          {submitMessage}
+          {dealerCode && (
+            <div className="dealer-code-display">
+              <h3>🎉 Your Dealer Code</h3>
+              <div className="dealer-code">{dealerCode}</div>
+              <p>Please save this code for login!</p>
             </div>
           )}
-          
-          <button 
-            type="submit" 
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className={isSubmitting ? 'submitting' : ''}
-          >
-            {isSubmitting ? "Creating Account..." : "SIGN UP"}
-          </button>
         </div>
+      )}
+
+      {/* Show Sign In button after successful verification, otherwise show Verify button */}
+      {dealerCode ? (
+        <button 
+          onClick={() => navigate('/login')}
+          className="success-button"
+        >
+          GO TO SIGN IN →
+        </button>
+      ) : (
+        <button 
+          onClick={handleVerifyOtp}
+          disabled={isSubmitting || otp.length !== 6}
+          className={isSubmitting ? 'submitting' : ''}
+        >
+          {isSubmitting ? "Verifying..." : "VERIFY & CREATE ACCOUNT"}
+        </button>
+      )}
+
+      <div className="resend-otp">
+        {otpTimer > 0 ? (
+          <p>Resend OTP in <strong>{otpTimer}s</strong></p>
+        ) : (
+          <p>
+            Didn't receive the code?{" "}
+            <span onClick={handleResendOtp}>Resend OTP</span>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
+  // ==================== MAIN RENDER ====================
+  return (
+    <div className="signin-container">
+      <div className="signin-box">
+        {step === 1 && renderTypeSelection()}
+        {step === 2 && renderForm()}
+        {step === 3 && renderOtpVerification()}
       </div>
 
       <style jsx>{`
         @keyframes blink {
-          0%, 100% { 
-            opacity: 0;
-          }
-          50% { 
-            opacity: 1;
-          }
+          0%, 100% { opacity: 0; }
+          50% { opacity: 1; }
         }
 
         @keyframes gradient {
@@ -429,21 +647,6 @@ function Signup() {
           animation: blink 5s ease-in-out infinite;
           z-index: 1;
         }
-
-        .signin-container::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 75vh;
-          background-image: 
-            radial-gradient(circle at 80% 40%, white 1px, transparent 1px),
-            radial-gradient(circle at 30% 70%, white 1px, transparent 1px);
-          background-size: 220px 220px, 160px 160px;
-          animation: blink 7s ease-in-out infinite;
-          z-index: 1;
-        }
         
         .signin-box {
           background: rgba(255, 255, 255, 0.95);
@@ -488,29 +691,123 @@ function Signup() {
           border-radius: 24px;
           z-index: -1;
         }
-        
-        .signin-title {
-          font-size: 32px;
+
+        /* Type Selection Styles */
+        .selection-title {
+          font-size: 28px;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+          background: linear-gradient(45deg, #667eea, #764ba2);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .selection-subtitle {
+          color: #6c757d;
+          margin-bottom: 2rem;
+        }
+
+        .type-cards {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2rem;
+          margin-bottom: 2rem;
+        }
+
+        .type-card {
+          background: white;
+          border: 2px solid transparent;
+          border-radius: 16px;
+          padding: 2rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          background: linear-gradient(white, white) padding-box, 
+                      linear-gradient(45deg, #667eea, #764ba2) border-box;
+        }
+
+        .type-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .type-icon {
+          font-size: 48px;
+          margin-bottom: 1rem;
+        }
+
+        .type-card h3 {
+          font-size: 20px;
+          margin-bottom: 0.5rem;
+          color: #333;
+        }
+
+        .type-card p {
+          color: #6c757d;
+          font-size: 14px;
+          margin-bottom: 1rem;
+        }
+
+        .type-features {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          text-align: left;
+        }
+
+        .type-features li {
+          color: #28a745;
+          font-size: 14px;
+          padding: 4px 0;
+        }
+
+        .login-link {
+          color: #6c757d;
+          font-size: 14px;
+        }
+
+        .login-link span {
+          color: #667eea;
+          cursor: pointer;
+          font-weight: 600;
+        }
+
+        .login-link span:hover {
+          text-decoration: underline;
+        }
+
+        /* Back Button */
+        .back-button {
+          position: absolute;
+          top: 1.5rem;
+          left: 1.5rem;
+          background: transparent;
+          border: none;
+          color: #667eea;
+          font-size: 16px;
+          cursor: pointer;
+          font-weight: 600;
+          padding: 8px 16px;
+          border-radius: 8px;
+          transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+          background: rgba(102, 126, 234, 0.1);
+        }
+
+        /* Form Styles */
+        .form-title {
+          font-size: 24px;
           font-weight: 700;
           margin-bottom: 2rem;
           background: linear-gradient(45deg, #667eea, #764ba2);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          animation: float 3s ease-in-out infinite;
-          position: relative;
         }
-        
-        .signin-title::after {
-          content: '✨';
-          position: absolute;
-          top: -10px;
-          right: -30px;
-          font-size: 20px;
-          animation: pulse 2s infinite;
-        }
-        
-        .signin-form {
+
+        .signup-form {
           display: flex;
           flex-direction: column;
           gap: 2rem;
@@ -581,9 +878,23 @@ function Signup() {
           color: #721c24;
           border: 1px solid #f1b0b7;
         }
+
+        .dealer-code-display {
+          margin-top: 1rem;
+          padding: 1rem;
+          background: rgba(255,255,255,0.5);
+          border-radius: 8px;
+        }
+
+        .dealer-code {
+          font-size: 32px;
+          font-weight: 700;
+          color: #667eea;
+          letter-spacing: 4px;
+        }
         
-        .signin-form input,
-        .signin-form select {
+        .signup-form input,
+        .signup-form select {
           padding: 18px 24px;
           border: 2px solid transparent;
           border-radius: 16px;
@@ -592,50 +903,45 @@ function Signup() {
                       linear-gradient(45deg, #667eea, #764ba2) border-box;
           transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
           outline: none;
-          position: relative;
         }
         
-        .signin-form input[type="file"] {
+        .signup-form input[type="file"] {
           padding: 14px 20px;
           font-size: 14px;
         }
         
-        .signin-form select {
+        .signup-form select {
           cursor: pointer;
         }
         
-        .signin-form input.error,
-        .signin-form select.error {
+        .signup-form input.error,
+        .signup-form select.error {
           border-color: #dc3545;
           background: linear-gradient(white, white) padding-box, 
                       linear-gradient(45deg, #dc3545, #c82333) border-box;
         }
         
-        .signin-form input:hover,
-        .signin-form select:hover {
+        .signup-form input:hover,
+        .signup-form select:hover {
           transform: translateY(-3px);
           box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
         }
         
-        .signin-form input:focus,
-        .signin-form select:focus {
+        .signup-form input:focus,
+        .signup-form select:focus {
           transform: translateY(-4px) scale(1.02);
           box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
           background: linear-gradient(#f8f9ff, #f8f9ff) padding-box, 
                       linear-gradient(45deg, #667eea, #764ba2) border-box;
         }
         
-        .signin-form input::placeholder {
+        .signup-form input::placeholder {
           color: #6c757d;
           font-weight: 500;
         }
         
-        .signin-form select option {
-          background: white;
-          color: #333;
-        }
-        
-        .signin-form button {
+        .signin-box button[type="submit"],
+        .signin-box button:not(.back-button) {
           background: linear-gradient(45deg, #667eea, #764ba2);
           color: white;
           padding: 16px 32px;
@@ -645,66 +951,108 @@ function Signup() {
           font-size: 16px;
           font-weight: 600;
           transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-          position: relative;
-          overflow: hidden;
           box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
           margin-top: 1rem;
           width: fit-content;
           align-self: center;
         }
         
-        .signin-form button:disabled {
+        .signin-box button:disabled {
           opacity: 0.6;
           cursor: not-allowed;
           transform: none;
         }
         
-        .signin-form button::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-          transition: left 0.5s;
-        }
-        
-        .signin-form button:hover:not(:disabled) {
+        .signin-box button:hover:not(:disabled):not(.back-button) {
           transform: translateY(-4px);
           box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
           background: linear-gradient(45deg, #5a67d8, #6b46c1);
         }
-        
-        .signin-form button:hover:not(:disabled)::before {
-          left: 100%;
-        }
-        
-        .signin-form button:active:not(:disabled) {
-          transform: translateY(-2px);
-        }
-        
-        .signin-form button:focus {
-          outline: none;
-          box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5), 0 0 0 3px rgba(102, 126, 234, 0.2);
+
+        /* OTP Verification Styles */
+        .otp-container {
+          padding: 2rem 0;
         }
 
-        .server-info {
-          margin-top: 1rem;
-          padding: 1rem;
-          background: #f8f9fa;
-          border-radius: 8px;
-          font-size: 12px;
+        .otp-icon {
+          font-size: 64px;
+          margin-bottom: 1rem;
+        }
+
+        .otp-title {
+          font-size: 28px;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+          background: linear-gradient(45deg, #667eea, #764ba2);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .otp-subtitle {
+          color: #6c757d;
+          margin-bottom: 2rem;
+          line-height: 1.6;
+        }
+
+        .otp-input-container {
+          margin-bottom: 2rem;
+        }
+
+        .otp-input {
+          width: 200px;
+          padding: 20px;
+          font-size: 32px;
+          text-align: center;
+          letter-spacing: 8px;
+          border: 2px solid transparent;
+          border-radius: 16px;
+          background: linear-gradient(white, white) padding-box, 
+                      linear-gradient(45deg, #667eea, #764ba2) border-box;
+          outline: none;
+          transition: all 0.3s ease;
+        }
+
+        .otp-input:focus {
+          transform: scale(1.05);
+          box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .otp-input.error {
+          background: linear-gradient(white, white) padding-box, 
+                      linear-gradient(45deg, #dc3545, #c82333) border-box;
+        }
+
+        .resend-otp {
+          margin-top: 2rem;
           color: #6c757d;
         }
 
-        .server-info p {
-          margin: 0.25rem 0;
+        .resend-otp span {
+          color: #667eea;
+          cursor: pointer;
+          font-weight: 600;
         }
 
-        /* Responsive adjustments */
+        .resend-otp span:hover {
+          text-decoration: underline;
+        }
+
+        /* Success Button (Go to Sign In) */
+        .success-button {
+          background: linear-gradient(45deg, #28a745, #20c997) !important;
+          box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4) !important;
+        }
+
+        .success-button:hover {
+          background: linear-gradient(45deg, #218838, #1aa179) !important;
+          box-shadow: 0 15px 40px rgba(40, 167, 69, 0.5) !important;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
-          .form-columns {
+          .form-columns,
+          .type-cards {
             grid-template-columns: 1fr;
             gap: 1.5rem;
           }
@@ -712,10 +1060,6 @@ function Signup() {
           .signin-box {
             padding: 2rem;
             max-width: 500px;
-          }
-          
-          .signin-title {
-            font-size: 28px;
           }
         }
         
@@ -727,14 +1071,6 @@ function Signup() {
           .signin-box {
             width: 100%;
             padding: 1.5rem;
-          }
-          
-          .signin-title {
-            font-size: 24px;
-          }
-          
-          .form-column {
-            gap: 1rem;
           }
         }
       `}</style>
