@@ -1,13 +1,640 @@
+// FormPage.js - COMPLETE UPDATED VERSION WITH DIRECT REDIRECT TO DISCOUNT PAGE
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import DiscountResultsPage from "./DiscountResultsPage";
+import PrivacyPolicyModal from "./PrivacyPolicyModal";
 import { api } from './api';
 
+// First Page Component
+function FormPageOne({ formData, setFormData, onProceed, brands, assets, models, loadingBrands, loadingAssets, loadingModels, loadAssets, loadModels, apiStatus }) {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    
+    setFormData({ ...formData, [name]: value });
+
+    if (name === "brand") {
+      setFormData(prev => ({ ...prev, brand: value, asset: "", model: "" }));
+      if (value) {
+        loadAssets(value);
+      }
+    } else if (name === "asset") {
+      setFormData(prev => ({ ...prev, asset: value, model: "" }));
+      if (value && formData.brand) {
+        loadModels(formData.brand, value);
+      }
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!formData.mobileNo || formData.mobileNo.length !== 10) {
+      alert("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    
+    if (!formData.brand) {
+      alert("Please select a brand");
+      return;
+    }
+    
+    if (!formData.asset) {
+      alert("Please select an asset");
+      return;
+    }
+    
+    if (!formData.model) {
+      alert("Please select a model");
+      return;
+    }
+    
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+    
+    onProceed();
+  };
+
+  return (
+    <div className="form-card">
+      <h2 className="floating-title">Tranzio</h2>
+
+      {apiStatus.status === 'error' && (
+        <div style={{
+          background: "linear-gradient(135deg, #ffe5e5, #fff0f0)",
+          border: "2px solid #ffcccc",
+          borderRadius: "15px",
+          padding: "15px",
+          marginBottom: "25px",
+          fontSize: "14px",
+          color: "#d32f2f",
+          textAlign: "center",
+          fontWeight: "600"
+        }}>
+          <strong>⚠ API Connection Issue</strong><br />
+          The server might be offline. You can still submit the form - it will show pricing without live discounts.
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        {/* Mobile Number */}
+        <div className="input-wrapper">
+          <input
+            className="input-field"
+            type="tel"
+            name="mobileNo"
+            placeholder="Mobile Number"
+            value={formData.mobileNo}
+            onChange={handleChange}
+            required
+            pattern="[0-9]{10}"
+            maxLength="10"
+            title="Please enter a valid 10-digit mobile number"
+          />
+        </div>
+
+        {/* Brand Dropdown */}
+        <div className="input-wrapper">
+          <select
+            className="select-field"
+            name="brand"
+            value={formData.brand}
+            onChange={handleChange}
+            required
+            disabled={loadingBrands}
+            style={{
+              cursor: loadingBrands ? "wait" : "pointer",
+              color: formData.brand ? "#333" : "#333",
+              opacity: formData.brand ? "1" : "0.6"
+            }}
+          >
+            <option value="">
+              {loadingBrands ? "Loading brands..." : "Select Brand"}
+            </option>
+            {brands.map((brand, idx) => (
+              <option key={idx} value={brand}>
+                {brand}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Asset Dropdown */}
+        <div className="input-wrapper">
+          <select
+            className="select-field"
+            name="asset"
+            value={formData.asset}
+            onChange={handleChange}
+            required
+            disabled={!formData.brand || loadingAssets}
+            style={{
+              cursor: (!formData.brand || loadingAssets) ? "not-allowed" : "pointer",
+              color: formData.asset ? "#333" : "#333",
+              opacity: formData.asset ? "1" : "0.6"
+            }}
+          >
+            <option value="">
+              {!formData.brand 
+                ? "Select brand first" 
+                : loadingAssets 
+                ? "Loading assets..." 
+                : "Select Asset"}
+            </option>
+            {assets.map((asset, idx) => (
+              <option key={idx} value={asset}>
+                {asset}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Model Dropdown */}
+        <div className="input-wrapper">
+          <select
+            className="select-field"
+            name="model"
+            value={formData.model}
+            onChange={handleChange}
+            required
+            disabled={!formData.brand || !formData.asset || loadingModels}
+            style={{
+              cursor: (!formData.brand || !formData.asset || loadingModels) ? "not-allowed" : "pointer",
+              color: formData.model ? "#333" : "#333",
+              opacity: formData.model ? "1" : "0.6"
+            }}
+          >
+            <option value="">
+              {!formData.brand || !formData.asset
+                ? "Select asset first" 
+                : loadingModels 
+                ? "Loading models..." 
+                : "Select Model"}
+            </option>
+            {models.map((model, idx) => (
+              <option key={idx} value={model}>
+                {model}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Amount */}
+        <div className="input-wrapper">
+          <input
+            className="input-field"
+            type="number"
+            name="amount"
+            placeholder="Amount"
+            value={formData.amount}
+            onChange={handleChange}
+            required
+            min="1"
+            step="0.01"
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="submit-btn"
+          style={{
+            width: "100%",
+            padding: "20px",
+            background: "#4d6cff",
+            color: "white",
+            border: "none",
+            borderRadius: "16px",
+            fontSize: "18px",
+            fontWeight: "800",
+            cursor: "pointer",
+            position: "relative",
+            overflow: "hidden",
+            textTransform: "uppercase",
+            letterSpacing: "2px",
+            boxShadow: "0 10px 30px rgba(77, 108, 255, 0.4)",
+            transition: "all 0.3s ease"
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = "translateY(-3px)";
+            e.currentTarget.style.boxShadow = "0 15px 40px rgba(77, 108, 255, 0.3)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 10px 30px rgba(77, 108, 255, 0.4)";
+          }}
+        >
+          <div className="btn-shimmer"></div>
+          <span>Proceed</span>
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// Second Page Component - UPDATED to send OTP on submit
+function FormPageTwo({ formData, setFormData, onBack, onSubmit, loading }) {
+  const navigate = useNavigate();
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [hasReadPrivacyPolicy, setHasReadPrivacyPolicy] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
+  const [sendingOTP, setSendingOTP] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handlePrivacyScroll = (e) => {
+    const element = e.target;
+    const scrollPosition = element.scrollTop + element.clientHeight;
+    const scrollHeight = element.scrollHeight;
+    
+    if (scrollPosition >= scrollHeight * 0.9) {
+      setHasReadPrivacyPolicy(true);
+    }
+  };
+
+  const handlePrivacyAccept = () => {
+    setPrivacyAccepted(true);
+    setShowPrivacyModal(false);
+    setShowWarning(false);
+  };
+
+  const handleOpenPrivacyModal = () => {
+    setShowPrivacyModal(true);
+    setHasReadPrivacyPolicy(false);
+    setShowWarning(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate privacy policy acceptance
+    if (!privacyAccepted) {
+      setShowWarning(true);
+      alert("Please read and accept the privacy policy to continue.");
+      return;
+    }
+
+    // Validate all fields
+    if (!formData.dealer || !formData.panNumber || !formData.dateOfBirth) {
+      alert("Please fill all the required fields.");
+      return;
+    }
+
+    // Check if already verified for this session
+    const verifiedMobile = sessionStorage.getItem('verifiedMobile');
+    const otpVerified = sessionStorage.getItem('otpVerified');
+    
+    if (otpVerified === 'true' && verifiedMobile === formData.mobileNo) {
+      // Already verified - proceed with form submission
+      onSubmit();
+      return;
+    }
+
+    // Need OTP verification - send OTP and navigate
+    setSendingOTP(true);
+    
+    try {
+      const response = await api.sendOTP({ mobileNo: formData.mobileNo });
+      
+      if (response.success) {
+        // Store complete form data for submission after OTP verification
+        sessionStorage.setItem('pendingFormData', JSON.stringify(formData));
+        sessionStorage.setItem('needsSubmission', 'true');
+        
+        // Navigate to OTP verification
+        navigate("/otp-verification", {
+          state: {
+            formData: formData,
+            autoSubmitAfterVerification: true
+          }
+        });
+      } else {
+        alert(response.error || 'Failed to send OTP. Please try again.');
+      }
+    } catch (error) {
+      console.error("OTP send error:", error);
+      alert(error.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setSendingOTP(false);
+    }
+  };
+
+  const handleCheckboxChange = (e) => {
+    if (!hasReadPrivacyPolicy && e.target.checked) {
+      e.preventDefault();
+      handleOpenPrivacyModal();
+    } else {
+      setPrivacyAccepted(e.target.checked);
+      if (e.target.checked) {
+        setShowWarning(false);
+      }
+    }
+  };
+
+  // Show verification status if already verified
+  const renderVerificationStatus = () => {
+    const verifiedMobile = sessionStorage.getItem('verifiedMobile');
+    const otpVerified = sessionStorage.getItem('otpVerified');
+    
+    if (otpVerified === 'true' && verifiedMobile === formData.mobileNo) {
+      return (
+        <div style={{
+          background: "linear-gradient(135deg, #e8f7ef, #f0fdf4)",
+          border: "2px solid #c6efd5",
+          borderRadius: "12px",
+          padding: "15px",
+          marginBottom: "20px",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px"
+        }}>
+          <div style={{
+            width: "24px",
+            height: "24px",
+            borderRadius: "50%",
+            background: "#2ecc71",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontWeight: "bold",
+            fontSize: "14px"
+          }}>
+            ✓
+          </div>
+          <div style={{ flex: 1 }}>
+            <strong style={{ color: "#2ecc71", display: "block", fontSize: "15px" }}>
+              Mobile Verified
+            </strong>
+            <p style={{ margin: "5px 0 0", fontSize: "13px", color: "#555" }}>
+              {formData.mobileNo} is verified
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
+  return (
+    <>
+      <PrivacyPolicyModal 
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+        onAccept={handlePrivacyAccept}
+        onScroll={handlePrivacyScroll}
+      />
+
+      <div className="form-card">
+        <h2 className="floating-title">Customer Details</h2>
+
+        <form onSubmit={handleSubmit}>
+          {/* Show verification status if verified */}
+          {renderVerificationStatus()}
+
+          {/* Customer Name */}
+          <div className="input-wrapper">
+            <input
+              className="input-field"
+              type="text"
+              name="dealer"
+              placeholder="Customer Name"
+              value={formData.dealer}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          {/* PAN Number */}
+          <div className="input-wrapper">
+            <input
+              className="input-field"
+              type="text"
+              name="panNumber"
+              placeholder="PAN Number"
+              value={formData.panNumber}
+              onChange={handleChange}
+              onInput={(e) => {
+                e.target.value = e.target.value.toUpperCase();
+              }}
+              maxLength="10"
+              pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}"
+              title="Please enter valid PAN (e.g., ABCDE1234F)"
+              required
+              style={{ textTransform: "uppercase" }}
+            />
+          </div>
+
+          {/* Date of Birth */}
+          <div className="input-wrapper">
+            <div className="date-input-container">
+              <input
+                className="input-field"
+                type="date"
+                name="dateOfBirth"
+                placeholder="Date of Birth"
+                value={formData.dateOfBirth}
+                onChange={handleChange}
+                required
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+          </div>
+
+          {/* Privacy Policy Section */}
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '15px',
+              background: privacyAccepted ? '#f0f8ff' : '#f8f9ff',
+              borderRadius: '12px',
+              border: `2px solid ${privacyAccepted ? '#4d6cff' : '#e0e0e0'}`,
+              transition: 'all 0.3s ease'
+            }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="checkbox"
+                  id="privacyCheckbox"
+                  checked={privacyAccepted}
+                  onChange={handleCheckboxChange}
+                  disabled={loading || sendingOTP}
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    cursor: 'pointer',
+                    accentColor: '#4d6cff'
+                  }}
+                />
+              </div>
+              <label 
+                htmlFor="privacyCheckbox"
+                style={{
+                  fontSize: '14px',
+                  color: '#333',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  flex: 1
+                }}
+              >
+                I have read and accept the{' '}
+                <span
+                  onClick={handleOpenPrivacyModal}
+                  style={{
+                    color: '#4d6cff',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontWeight: '700'
+                  }}
+                >
+                  Privacy Policy
+                </span>
+              </label>
+            </div>
+            
+            {showWarning && !privacyAccepted && (
+              <div style={{
+                marginTop: '8px',
+                fontSize: '12px',
+                color: '#e74c3c',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                animation: 'fadeIn 0.3s ease'
+              }}>
+                <span>⚠</span>
+                <span>Please read the Privacy Policy fully before accepting</span>
+              </div>
+            )}
+            
+            {hasReadPrivacyPolicy && !privacyAccepted && !showWarning && (
+              <div style={{
+                marginTop: '8px',
+                fontSize: '12px',
+                color: '#2ecc71',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                animation: 'fadeIn 0.3s ease'
+              }}>
+                <span>✓</span>
+                <span>Privacy Policy read - You can now accept it</span>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: "flex", gap: "15px" }}>
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={sendingOTP}
+              style={{
+                flex: "1",
+                padding: "20px",
+                background: sendingOTP ? "#95a5a6" : "#6c757d",
+                color: "white",
+                border: "none",
+                borderRadius: "16px",
+                fontSize: "18px",
+                fontWeight: "800",
+                cursor: sendingOTP ? "not-allowed" : "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                boxShadow: "0 10px 30px rgba(108, 117, 125, 0.4)",
+                transition: "all 0.3s ease"
+              }}
+              onMouseOver={(e) => {
+                if (!sendingOTP) {
+                  e.currentTarget.style.transform = "translateY(-3px)";
+                  e.currentTarget.style.boxShadow = "0 15px 40px rgba(108, 117, 125, 0.3)";
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!sendingOTP) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 10px 30px rgba(108, 117, 125, 0.4)";
+                }
+              }}
+            >
+              Back
+            </button>
+
+            <button
+              type="submit"
+              disabled={loading || sendingOTP || !privacyAccepted}
+              className="submit-btn"
+              style={{
+                flex: "1",
+                padding: "20px",
+                background: (loading || sendingOTP || !privacyAccepted) ? "#95a5a6" : "#4d6cff",
+                color: "white",
+                border: "none",
+                borderRadius: "16px",
+                fontSize: "18px",
+                fontWeight: "800",
+                cursor: (loading || sendingOTP || !privacyAccepted) ? "not-allowed" : "pointer",
+                position: "relative",
+                overflow: "hidden",
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                boxShadow: (loading || sendingOTP || !privacyAccepted)
+                  ? "0 10px 30px rgba(149, 165, 166, 0.4)"
+                  : "0 10px 30px rgba(77, 108, 255, 0.4)",
+                transition: "all 0.3s ease"
+              }}
+              onMouseOver={(e) => {
+                if (!loading && !sendingOTP && privacyAccepted) {
+                  e.currentTarget.style.transform = "translateY(-3px)";
+                  e.currentTarget.style.boxShadow = "0 15px 40px rgba(77, 108, 255, 0.3)";
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!loading && !sendingOTP && privacyAccepted) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 10px 30px rgba(77, 108, 255, 0.4)";
+                }
+              }}
+            >
+              {!(loading || sendingOTP) && privacyAccepted && <div className="btn-shimmer"></div>}
+              {sendingOTP ? (
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div className="loading-spinner"></div>
+                  Sending OTP...
+                </span>
+              ) : loading ? (
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div className="loading-spinner"></div>
+                  Processing...
+                </span>
+              ) : (
+                <span>Submit</span>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}
+
+// Main FormPage Component - UPDATED to handle auto-submission after OTP
 export default function FormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { auth, signout } = useAuth();
   
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     mobileNo: "",
     dealer: "",
@@ -19,7 +646,6 @@ export default function FormPage() {
     amount: ""
   });
 
-  // State for dropdown options
   const [brands, setBrands] = useState([]);
   const [assets, setAssets] = useState([]);
   const [models, setModels] = useState([]);
@@ -32,24 +658,37 @@ export default function FormPage() {
   const [showResults, setShowResults] = useState(false);
   const [apiStatus, setApiStatus] = useState({ status: 'checking', message: '' });
 
-  // Load user data from auth context and initialize
+  // Handle return from OTP verification with auto-submission
+  useEffect(() => {
+    const checkForPendingSubmission = async () => {
+      const needsSubmission = sessionStorage.getItem('needsSubmission');
+      const verifiedMobile = sessionStorage.getItem('verifiedMobile');
+      const otpVerified = sessionStorage.getItem('otpVerified');
+      const pendingData = sessionStorage.getItem('pendingFormData');
+      
+      if (needsSubmission === 'true' && otpVerified === 'true' && pendingData) {
+        console.log("✅ OTP Verified - Auto-submitting form");
+        
+        // Clear the submission flag
+        sessionStorage.removeItem('needsSubmission');
+        
+        // Parse and restore form data
+        const parsedData = JSON.parse(pendingData);
+        setFormData(parsedData);
+        
+        // Auto-submit the form
+        await submitFormData(parsedData);
+      }
+    };
+    
+    checkForPendingSubmission();
+  }, []);
+
   useEffect(() => {
     if (!auth || !auth.user) {
-      console.log("❌ No auth found in FormPage, user should be redirected by ProtectedRoute");
       return;
     }
 
-    const user = auth.user;
-    console.log("✅ User data loaded from auth:", user);
-    
-    // Auto-fill form fields with user data
-    setFormData(prev => ({
-      ...prev,
-      mobileNo: user.mobileNumber || "",
-      dealer: user.dealerName || ""
-    }));
-
-    // Initialize data
     const initializeData = async () => {
       try {
         await api.healthCheck();
@@ -57,8 +696,6 @@ export default function FormPage() {
           status: 'connected', 
           message: 'API Connected Successfully!' 
         });
-        
-        // Load brands immediately
         await loadBrands();
       } catch (error) {
         console.error("API initialization error:", error);
@@ -72,7 +709,6 @@ export default function FormPage() {
     initializeData();
   }, [auth]);
 
-  // Load brands
   const loadBrands = async () => {
     setLoadingBrands(true);
     try {
@@ -87,7 +723,6 @@ export default function FormPage() {
     }
   };
 
-  // Load assets when brand changes
   const loadAssets = async (brand) => {
     if (!brand) {
       setAssets([]);
@@ -108,7 +743,6 @@ export default function FormPage() {
     }
   };
 
-  // Load models when brand and asset change
   const loadModels = async (brand, asset) => {
     if (!brand || !asset) {
       setModels([]);
@@ -129,67 +763,41 @@ export default function FormPage() {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Don't allow editing of auto-filled fields
-    if (name === "mobileNo" || name === "dealer") {
-      return;
-    }
-    
-    setFormData({ ...formData, [name]: value });
-
-    // Handle cascading dropdowns
-    if (name === "brand") {
-      // Reset dependent fields
-      setFormData(prev => ({ ...prev, brand: value, asset: "", model: "" }));
-      setAssets([]);
-      setModels([]);
-      
-      // Load assets for selected brand
-      if (value) {
-        loadAssets(value);
-      }
-    } else if (name === "asset") {
-      // Reset model field
-      setFormData(prev => ({ ...prev, asset: value, model: "" }));
-      setModels([]);
-      
-      // Load models for selected brand and asset
-      if (value && formData.brand) {
-        loadModels(formData.brand, value);
-      }
-    }
+  const handleProceedToPage2 = () => {
+    setCurrentPage(2);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleBackToPage1 = () => {
+    setCurrentPage(1);
+  };
+
+  const submitFormData = async (data) => {
     setLoading(true);
     setResultData(null);
 
     const payload = {
-      brand: formData.brand,
-      asset: formData.asset,
-      model: formData.model,
-      mobileNo: formData.mobileNo,
-      amount: formData.amount,
-      panNumber: formData.panNumber,
-      dateOfBirth: formData.dateOfBirth
+      brand: data.brand,
+      asset: data.asset,
+      model: data.model,
+      mobileNo: data.mobileNo,
+      amount: data.amount,
+      panNumber: data.panNumber,
+      dateOfBirth: data.dateOfBirth
     };
 
     try {
       await api.healthCheck();
-      const data = await api.checkDiscount(payload);
+      const result = await api.checkDiscount(payload);
       
-      if (data.success !== false) {
-        setResultData(data);
+      if (result.success !== false) {
+        setResultData(result);
         setShowResults(true);
       } else {
         setResultData({
           success: false,
-          message: data.message || data.error || "An error occurred while checking discounts.",
-          basePrice: parseFloat(formData.amount) || 0,
-          finalPrice: parseFloat(formData.amount) || 0,
+          message: result.message || result.error || "An error occurred while checking discounts.",
+          basePrice: parseFloat(data.amount) || 0,
+          finalPrice: parseFloat(data.amount) || 0,
           discount: 0,
           offerDetails: null,
           showPaymentButton: true,
@@ -217,8 +825,8 @@ export default function FormPage() {
       setResultData({
         success: false,
         message: errorMessage,
-        basePrice: parseFloat(formData.amount) || 0,
-        finalPrice: parseFloat(formData.amount) || 0,
+        basePrice: parseFloat(data.amount) || 0,
+        finalPrice: parseFloat(data.amount) || 0,
         discount: 0,
         offerDetails: null,
         showPaymentButton: true,
@@ -230,22 +838,25 @@ export default function FormPage() {
     }
   };
 
-  const handleLogout = () => {
-    console.log("🚪 Logging out...");
-    signout();
-    navigate("/", { replace: true });
+  const handleFinalSubmit = async () => {
+    await submitFormData(formData);
   };
 
   const handleBackToForm = () => {
     setShowResults(false);
     setResultData(null);
+    setCurrentPage(1);
+    // Clear OTP verification for new submission
+    sessionStorage.removeItem('otpVerified');
+    sessionStorage.removeItem('verifiedMobile');
+    sessionStorage.removeItem('needsSubmission');
+    sessionStorage.removeItem('pendingFormData');
   };
 
   if (showResults) {
     return <DiscountResultsPage resultData={resultData} onBackToForm={handleBackToForm} />;
   }
 
-  // Show loading if no auth data yet
   if (!auth || !auth.user) {
     return (
       <div style={{ 
@@ -282,11 +893,6 @@ export default function FormPage() {
             50% { transform: translateY(-10px); }
           }
 
-          @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-          }
-
           @keyframes shimmer {
             0% { transform: translateX(-100%); }
             100% { transform: translateX(100%); }
@@ -297,10 +903,9 @@ export default function FormPage() {
             100% { transform: rotate(360deg); }
           }
 
-          @keyframes gradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
           }
 
           .form-page-container {
@@ -323,7 +928,6 @@ export default function FormPage() {
             z-index: 10;
             animation: slideIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             backdrop-filter: blur(10px);
-            /* Top border: #4d6cff, other borders: grey */
             border: 2px solid #e0e0e0;
             border-top: 6px solid #4d6cff;
             width: 100%;
@@ -406,19 +1010,6 @@ export default function FormPage() {
             margin-right: 10px;
           }
 
-          .auto-filled-field {
-            background: linear-gradient(135deg, #f8f9ff 0%, #eef1ff 100%);
-            color: #333;
-            font-weight: 600;
-            border-color: #4d6cff;
-          }
-
-          .auto-filled-field:hover {
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
-          }
-
           .floating-title {
             animation: float 4s ease-in-out infinite;
             color: #333;
@@ -430,39 +1021,11 @@ export default function FormPage() {
             letter-spacing: 2px;
           }
 
-          /* Placeholder styling - changed to black */
           ::placeholder {
             color: #333;
             opacity: 0.6;
           }
 
-          :-ms-input-placeholder {
-            color: #333;
-            opacity: 0.6;
-          }
-
-          ::-ms-input-placeholder {
-            color: #333;
-            opacity: 0.6;
-          }
-
-          /* Select placeholder styling - changed to black */
-          select:invalid {
-            color: #333;
-            opacity: 0.6;
-          }
-
-          /* For select dropdown options */
-          option {
-            color: #333;
-          }
-
-          option[value=""][disabled] {
-            color: #333;
-            opacity: 0.6;
-          }
-
-          /* Custom date input styling */
           .date-input-container {
             position: relative;
             width: 100%;
@@ -471,6 +1034,7 @@ export default function FormPage() {
           .date-input-container input[type="date"] {
             width: 100%;
             padding: 16px 20px;
+            padding-right: 50px;
             border-radius: 16px;
             font-size: 16px;
             border: 2px solid #e0e0e0;
@@ -494,22 +1058,6 @@ export default function FormPage() {
             transform: translateY(-2px);
           }
 
-          /* Make the entire date field clickable */
-          .date-input-container input[type="date"]::-webkit-calendar-picker-indicator {
-            background: transparent;
-            color: transparent;
-            cursor: pointer;
-            height: 100%;
-            width: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            opacity: 0;
-          }
-
-          /* Custom calendar icon - made more visible with #4d6cff color */
           .date-input-container::after {
             content: "📅";
             position: absolute;
@@ -522,54 +1070,36 @@ export default function FormPage() {
             opacity: 1;
           }
 
-          /* Style for empty date field - show "Date of Birth" placeholder */
-          .date-input-container input[type="date"]:not(:valid)::before {
-            content: "Date of Birth";
+          .date-input-container input[type="date"]::-webkit-calendar-picker-indicator {
+            opacity: 0;
+            position: absolute;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+          }
+
+          .date-input-container input[type="date"]::before {
+            content: attr(placeholder);
             color: #333;
             opacity: 0.6;
-            position: absolute;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            pointer-events: none;
             font-weight: 600;
           }
 
-          /* Hide the default placeholder text */
-          .date-input-container input[type="date"]::-webkit-input-placeholder {
-            color: transparent;
-          }
-
-          .date-input-container input[type="date"]::-moz-placeholder {
-            color: transparent;
-          }
-
-          .date-input-container input[type="date"]:-ms-input-placeholder {
-            color: transparent;
-          }
-
-          .date-input-container input[type="date"]:-moz-placeholder {
-            color: transparent;
-          }
-
-          /* Style for filled date field */
-          .date-input-container input[type="date"]:valid {
-            color: #333;
-            opacity: 1;
-          }
-
-          /* Hide the custom placeholder when date is selected */
+          .date-input-container input[type="date"]:focus::before,
           .date-input-container input[type="date"]:valid::before {
-            content: none;
+            content: "";
           }
 
-          /* Ensure the entire date input area is clickable */
-          .date-input-container input[type="date"] {
-            position: relative;
-            z-index: 1;
+          .select-field {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d6cff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 20px;
+            padding-right: 50px;
           }
 
-          /* Responsive styles */
           @media (max-width: 768px) {
             .form-page-container {
               padding: 15px;
@@ -589,24 +1119,6 @@ export default function FormPage() {
               padding: 14px 18px;
               font-size: 15px;
             }
-            
-            .date-input-container input[type="date"] {
-              padding: 14px 18px;
-              font-size: 15px;
-            }
-            
-            .date-input-container input[type="date"]:not(:valid)::before {
-              left: 18px;
-            }
-            
-            .date-input-container::after {
-              right: 18px;
-            }
-            
-            button[type="submit"] {
-              padding: 18px;
-              font-size: 18px;
-            }
           }
 
           @media (max-width: 480px) {
@@ -625,297 +1137,35 @@ export default function FormPage() {
               font-size: 14px;
               border-radius: 14px;
             }
-            
-            .date-input-container input[type="date"] {
-              padding: 12px 16px;
-              font-size: 14px;
-              border-radius: 14px;
-            }
-            
-            .date-input-container input[type="date"]:not(:valid)::before {
-              left: 16px;
-              font-size: 14px;
-            }
-            
-            .date-input-container::after {
-              right: 16px;
-              font-size: 18px;
-            }
-            
-            button[type="submit"] {
-              padding: 16px;
-              font-size: 16px;
-              border-radius: 14px;
-            }
-            
-            .input-wrapper {
-              margin-bottom: 16px;
-            }
-          }
-
-          /* Small screen adjustments */
-          @media (max-height: 700px) {
-            .form-page-container {
-              align-items: flex-start;
-              padding-top: 30px;
-            }
-            
-            .form-card {
-              margin-top: 0;
-            }
-          }
-
-          /* Select dropdown styling for responsiveness */
-          .select-field {
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d6cff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 16px center;
-            background-size: 20px;
-            padding-right: 50px;
-          }
-
-          @media (max-width: 480px) {
-            .select-field {
-              background-size: 18px;
-              background-position: right 14px center;
-              padding-right: 45px;
-            }
           }
         `}
       </style>
       
       <div className="form-page-container">
-        <div className="form-card">
-          <h2 className="floating-title">
-            Tranzio
-          </h2>
-
-          {apiStatus.status === 'error' && (
-            <div style={{
-              background: "linear-gradient(135deg, #ffe5e5, #fff0f0)",
-              border: "2px solid #ffcccc",
-              borderRadius: "15px",
-              padding: "15px",
-              marginBottom: "25px",
-              fontSize: "14px",
-              color: "#d32f2f",
-              textAlign: "center",
-              fontWeight: "600"
-            }}>
-              <strong>⚠ API Connection Issue</strong><br />
-              The server might be offline. You can still submit the form - it will show pricing without live discounts.
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            {/* Mobile Number - Auto-filled and Read-only */}
-            <div className="input-wrapper">
-              <input
-                className="input-field auto-filled-field"
-                type="text"
-                name="mobileNo"
-                placeholder="Mobile Number"
-                value={formData.mobileNo}
-                onChange={handleChange}
-                readOnly
-                disabled
-              />
-            </div>
-
-            {/* Dealer - Auto-filled and Read-only */}
-            <div className="input-wrapper">
-              <input
-                className="input-field auto-filled-field"
-                type="text"
-                name="dealer"
-                placeholder="Dealer Name"
-                value={formData.dealer}
-                onChange={handleChange}
-                readOnly
-                disabled
-              />
-            </div>
-
-            {/* PAN Number */}
-            <div className="input-wrapper">
-              <input
-                className="input-field"
-                type="text"
-                name="panNumber"
-                placeholder="PAN Number"
-                value={formData.panNumber}
-                onChange={handleChange}
-                maxLength="10"
-                // pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}"
-                title="Please enter valid PAN (e.g., ABCDE1234F)"
-                required
-                style={{ textTransform: "uppercase" }}
-              />
-            </div>
-
-            {/* Date of Birth - Updated with custom container */}
-            <div className="input-wrapper">
-              <div className="date-input-container">
-                <input
-                  className="input-field"
-                  type="date"
-                  name="dateOfBirth"
-                  value={formData.dateOfBirth}
-                  onChange={handleChange}
-                  required
-                  style={{
-                    color: formData.dateOfBirth ? "#333" : "transparent",
-                    opacity: formData.dateOfBirth ? "1" : "1"
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Brand Dropdown */}
-            <div className="input-wrapper">
-              <select
-                className="select-field"
-                name="brand"
-                value={formData.brand}
-                onChange={handleChange}
-                required
-                disabled={loadingBrands}
-                style={{
-                  cursor: loadingBrands ? "wait" : "pointer",
-                  color: formData.brand ? "#333" : "#333",
-                  opacity: formData.brand ? "1" : "0.6"
-                }}
-              >
-                <option value="">
-                  {loadingBrands ? "Loading brands..." : "Select Brand"}
-                </option>
-                {brands.map((brand, idx) => (
-                  <option key={idx} value={brand}>
-                    {brand}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Asset Dropdown */}
-            <div className="input-wrapper">
-              <select
-                className="select-field"
-                name="asset"
-                value={formData.asset}
-                onChange={handleChange}
-                required
-                disabled={!formData.brand || loadingAssets}
-                style={{
-                  cursor: (!formData.brand || loadingAssets) ? "not-allowed" : "pointer",
-                  color: formData.asset ? "#333" : "#333",
-                  opacity: formData.asset ? "1" : "0.6"
-                }}
-              >
-                <option value="">
-                  {!formData.brand 
-                    ? "Select brand first" 
-                    : loadingAssets 
-                    ? "Loading assets..." 
-                    : "Select Asset"}
-                </option>
-                {assets.map((asset, idx) => (
-                  <option key={idx} value={asset}>
-                    {asset}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Model Dropdown */}
-            <div className="input-wrapper">
-              <select
-                className="select-field"
-                name="model"
-                value={formData.model}
-                onChange={handleChange}
-                required
-                disabled={!formData.brand || !formData.asset || loadingModels}
-                style={{
-                  cursor: (!formData.brand || !formData.asset || loadingModels) ? "not-allowed" : "pointer",
-                  color: formData.model ? "#333" : "#333",
-                  opacity: formData.model ? "1" : "0.6"
-                }}
-              >
-                <option value="">
-                  {!formData.brand || !formData.asset
-                    ? "Select asset first" 
-                    : loadingModels 
-                    ? "Loading models..." 
-                    : "Select Model"}
-                </option>
-                {models.map((model, idx) => (
-                  <option key={idx} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Amount */}
-            <div className="input-wrapper">
-              <input
-                className="input-field"
-                type="number"
-                name="amount"
-                placeholder="Amount"
-                value={formData.amount}
-                onChange={handleChange}
-                required
-                min="1"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="submit-btn"
-              style={{
-                width: "100%",
-                padding: "20px",
-                background: loading 
-                  ? "#95a5a6" 
-                  : apiStatus.status === 'error'
-                  ? "#e74c3c"
-                  : "#4d6cff",
-                color: "white",
-                border: "none",
-                borderRadius: "16px",
-                fontSize: "18px",
-                fontWeight: "800",
-                cursor: loading ? "not-allowed" : "pointer",
-                position: "relative",
-                overflow: "hidden",
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                boxShadow: loading 
-                  ? "0 10px 30px rgba(149, 165, 166, 0.4)"
-                  : apiStatus.status === 'error'
-                  ? "0 10px 30px rgba(231, 76, 60, 0.4)"
-                  : "0 10px 30px rgba(77, 108, 255, 0.4)",
-                transition: "all 0.3s ease"
-              }}
-            >
-              {!loading && <div className="btn-shimmer"></div>}
-              {loading ? (
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div className="loading-spinner"></div>
-                  Checking Offers...
-                </span>
-              ) : (
-                <span>
-                  {apiStatus.status === 'error' ? 'Check Anyway' : 'Check Discount'}
-                </span>
-              )}
-            </button>
-          </form>
-        </div>
+        {currentPage === 1 ? (
+          <FormPageOne 
+            formData={formData}
+            setFormData={setFormData}
+            onProceed={handleProceedToPage2}
+            brands={brands}
+            assets={assets}
+            models={models}
+            loadingBrands={loadingBrands}
+            loadingAssets={loadingAssets}
+            loadingModels={loadingModels}
+            loadAssets={loadAssets}
+            loadModels={loadModels}
+            apiStatus={apiStatus}
+          />
+        ) : (
+          <FormPageTwo 
+            formData={formData}
+            setFormData={setFormData}
+            onBack={handleBackToPage1}
+            onSubmit={handleFinalSubmit}
+            loading={loading}
+          />
+        )}
       </div>
     </>
   );

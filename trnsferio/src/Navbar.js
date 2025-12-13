@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronDown, ChevronUp } from 'lucide-react';
+import AboutUs from './Aboutus';
 
 const Navbar = () => {
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -8,22 +9,29 @@ const Navbar = () => {
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   
-  // Refs for hover timeout
   const dropdownTimeoutRef = useRef(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Reset states when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setMobileDropdownOpen(false);
+    setActiveDropdown(null);
+  }, [location.pathname]);
 
   const dropdownMenus = {
     company: {
       sections: [
         {
           title: "Overview",
-          items: [{ name: "About us", link: "#" }]
+          items: [{ name: "About us", link: "/aboutus" }]
         },
         {
           title: "Learn more",
@@ -37,9 +45,7 @@ const Navbar = () => {
     setMobileMenuOpen(false);
     setMobileDropdownOpen(false);
     
-    // Check if we're already on the homepage
     if (window.location.pathname === '/') {
-      // If already on homepage, just scroll to section
       setTimeout(() => {
         const element = document.getElementById(sectionId);
         if (element) {
@@ -47,20 +53,17 @@ const Navbar = () => {
         }
       }, 100);
     } else {
-      // If not on homepage, navigate to homepage then scroll
       navigate('/');
       setTimeout(() => {
         const element = document.getElementById(sectionId);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth' });
         }
-      }, 300); // Increased timeout for navigation to complete
+      }, 300);
     }
   };
 
-  // Handle mouse enter with immediate open
   const handleMouseEnter = () => {
-    // Clear any existing timeout
     if (dropdownTimeoutRef.current) {
       clearTimeout(dropdownTimeoutRef.current);
       dropdownTimeoutRef.current = null;
@@ -68,14 +71,12 @@ const Navbar = () => {
     setActiveDropdown('company');
   };
 
-  // Handle mouse leave with 1 second delay
   const handleMouseLeave = () => {
     dropdownTimeoutRef.current = setTimeout(() => {
       setActiveDropdown(null);
-    }, 1000); // 1 second delay
+    }, 1000);
   };
 
-  // Also handle mouse enter on dropdown menu itself
   const handleDropdownMouseEnter = () => {
     if (dropdownTimeoutRef.current) {
       clearTimeout(dropdownTimeoutRef.current);
@@ -83,8 +84,7 @@ const Navbar = () => {
     }
   };
 
-  // Clean up timeout on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (dropdownTimeoutRef.current) {
         clearTimeout(dropdownTimeoutRef.current);
@@ -98,59 +98,37 @@ const Navbar = () => {
         <div className="nav-logo" onClick={() => navigate("/")}>
           <svg className="logo-icon" viewBox="0 0 24 24" fill="none"
             xmlns="http://www.w3.org/2000/svg">
-
-            {/* Arrow 1 - Blue (#0025ff) */}
             <path d="M3 6L9 12L3 18"
                   stroke="#566df1ff"
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round" />
-
-            {/* Arrow 2 - Green (#00A300) */}
             <path d="M9 6L15 12L9 18"
                   stroke="#a13d07ff"
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   />
-
-            {/* Arrow 3 - Purple (#3D0092) */}
             <path d="M15 6L21 12L15 18"
                   stroke="#00A300"
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round" />
-
           </svg>
           <span className="logo-text">TrnZio</span>
         </div>
 
         <div className="nav-links">
-          {/* Added Features link from homepage */}
           <a href="#features" className="nav-link" onClick={(e) => {
             e.preventDefault();
             handleLinkClick('features');
           }}>Features</a>
 
-          {/* Added Solutions link from homepage */}
           <a href="#solutions" className="nav-link" onClick={(e) => {
             e.preventDefault();
             handleLinkClick('solutions');
           }}>Solutions</a>
 
-          {/* Added Pricing link from homepage */}
-          <a href="#pricing" className="nav-link" onClick={(e) => {
-            e.preventDefault();
-            handleLinkClick('pricing');
-          }}>Pricing</a>
-
-          {/* Added FAQ link from homepage */}
-          <a href="#faq" className="nav-link" onClick={(e) => {
-            e.preventDefault();
-            handleLinkClick('faq');
-          }}>FAQ</a>
-
-          {/* Your existing Company dropdown */}
           <div
             className="nav-link-dropdown"
             onMouseEnter={handleMouseEnter}
@@ -165,7 +143,6 @@ const Navbar = () => {
               </span>
             </a>
             
-
             {activeDropdown === 'company' && (
               <div 
                 className="dropdown-menu" 
@@ -194,11 +171,10 @@ const Navbar = () => {
         </div>
 
         <div className="nav-actions">
-          <button className="btn" onClick={() => navigate("/signin")}>Sign in</button>
+          <button className="btn nav-btn-secondary" onClick={() => navigate("/signin")}>Sign in</button>
           
-          <button className="btn btn-primary" style={{ fontSize: '15px' }} onClick={() => navigate("/launchdemo")}>Launch Demo</button>
+          <button className="btn nav-btn-primary" onClick={() => navigate("/launchdemo")}>Launch Demo</button>
           
-          {/* Mobile hamburger menu */}
           <button
             className="hamburger"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -236,18 +212,8 @@ const Navbar = () => {
               e.preventDefault();
               handleLinkClick('solutions');
             }}>Solutions</a>
+          
             
-            <a href="#pricing" className="sidebar-link" onClick={(e) => {
-              e.preventDefault();
-              handleLinkClick('pricing');
-            }}>Pricing</a>
-            
-            <a href="#faq" className="sidebar-link" onClick={(e) => {
-              e.preventDefault();
-              handleLinkClick('faq');
-            }}>FAQ</a>
-            
-            {/* Company dropdown in sidebar */}
             <div className="sidebar-dropdown">
               <button 
                 className="sidebar-dropdown-btn" 
@@ -301,41 +267,39 @@ const Navbar = () => {
         </div>
       </div>
       
-      {/* Overlay for mobile sidebar */}
       <div className={`sidebar-overlay ${mobileMenuOpen ? 'open' : ''}`} onClick={() => setMobileMenuOpen(false)} />
       
-      <style jsx>{`
-        /* Reset any global styles that might affect navbar */
+      <style jsx global>{`
+        /* Use global styles with high specificity to prevent overrides */
         .navbar {
           position: fixed !important;
-          top: 20px !important; /* Moved 20px down from top */
+          top: 1.25rem !important;
           left: 0 !important;
           right: 0 !important;
           background: rgba(255,255,255,0.94) !important;
           backdrop-filter: blur(16px) !important;
           border-bottom: 1px solid rgba(0,0,0,0.08) !important;
-          box-shadow: ${scrolled ? '0 4px 20px rgba(0,0,0,0.08)' : 'none'} !important;
+          box-shadow: ${scrolled ? '0 0.25rem 1.25rem rgba(0,0,0,0.08)' : 'none'} !important;
           z-index: 1000 !important;
-          padding: 0 40px !important;
+          padding: 0 2.5rem !important;
           transition: all 0.3s ease !important;
           margin: 0 !important;
           width: 100% !important;
           box-sizing: border-box !important;
-          height: 70px; /* Slightly reduced height */
-          display: flex;
-          align-items: center;
-          border-radius: 16px; /* Added rounded corners */
-          max-width: 1400px; /* Max width for centered effect */
+          height: 4.375rem !important;
+          display: flex !important;
+          align-items: center !important;
+          border-radius: 1rem !important;
+          max-width: 87.5rem !important;
           margin-left: auto !important;
           margin-right: auto !important;
           left: 50% !important;
-          transform: translateX(-50%) !important; /* Center horizontally */
+          transform: translateX(-50%) !important;
         }
 
-        /* When scrolled, make it stick to top */
         .navbar.scrolled {
           top: 0 !important;
-          border-radius: 0 0 16px 16px; /* Only bottom rounded when at top */
+          border-radius: 0 0 1rem 1rem !important;
           width: 100% !important;
           max-width: 100% !important;
           left: 0 !important;
@@ -343,425 +307,451 @@ const Navbar = () => {
         }
 
         .nav-content {
-          max-width: 1400px;
-          margin: 0 auto;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 20px 0;
-          width: 100%;
+          max-width: 87.5rem !important;
+          margin: 0 auto !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding: 1.25rem 0 !important;
+          width: 100% !important;
         }
 
         .nav-logo {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          cursor: pointer;
-          margin-right: auto;
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.75rem !important;
+          cursor: pointer !important;
+          margin-right: auto !important;
         }
 
         .logo-icon {
-          width: 32px;
-          height: 32px;
-          color: #3D0092;
+          width: 2rem !important;
+          height: 2rem !important;
+          color: #3D0092 !important;
+          flex-shrink: 0 !important;
         }
 
         .logo-text {
-          font-size: 24px;
-          font-weight: 700;
-          color: #000;
+          font-size: 1.5rem !important;
+          font-weight: 700 !important;
+          color: #000 !important;
+          white-space: nowrap !important;
         }
 
         .nav-links {
-          display: flex;
-          gap: 28px;
-          align-items: center;
-          font-size: 15px;
-          margin-right: 20rem;
+          display: flex !important;
+          gap: 1.75rem !important;
+          align-items: center !important;
+          font-size: 0.9375rem !important;
+          margin-right: 20rem !important;
         }
 
         .nav-link {
-          color: #222;
-          font-weight: 600;
-          text-decoration: none;
-          transition: color 0.2s ease;
-          position: relative;
-          display: flex;
-          align-items: center;
-          gap: 4px;
+          color: #222 !important;
+          font-weight: 600 !important;
+          text-decoration: none !important;
+          transition: color 0.2s ease !important;
+          position: relative !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.25rem !important;
+          white-space: nowrap !important;
         }
 
         .nav-link:hover {
-          color: #3D0092;
+          color: #3D0092 !important;
         }
 
         .nav-link::after {
-          content: '';
-          position: absolute;
-          bottom: -25px;
-          left: 0;
-          width: 0;
-          height: 3px;
-          background: #3D0092;
-          transition: width 0.3s;
+          content: '' !important;
+          position: absolute !important;
+          bottom: -1.5625rem !important;
+          left: 0 !important;
+          width: 0 !important;
+          height: 0.1875rem !important;
+          background: #3D0092 !important;
+          transition: width 0.3s !important;
         }
 
         .nav-link:hover::after,
         .nav-link-dropdown:hover .nav-link::after {
-          width: 100%;
+          width: 100% !important;
         }
 
         .nav-link-dropdown {
-          position: relative;
+          position: relative !important;
         }
 
         .dropdown-arrow-wrapper {
-          display: flex;
-          align-items: center;
-          margin-left: 4px;
+          display: flex !important;
+          align-items: center !important;
+          margin-left: 0.25rem !important;
         }
 
         .dropdown-arrow {
-          width: 12px;
-          height: 8px;
-          transition: transform 0.3s;
+          width: 0.75rem !important;
+          height: 0.5rem !important;
+          transition: transform 0.3s !important;
         }
 
         .nav-link-dropdown:hover .dropdown-arrow {
-          transform: rotate(180deg);
+          transform: rotate(180deg) !important;
         }
 
         .dropdown-menu {
-          position: absolute;
-          top: calc(100% + 25px);
-          left: 50%;
-          background: white;
-          border: 1px solid #e5e5e5;
-          border-radius: 8px;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-          padding: 32px;
-          min-width: 600px;
-          animation: dropdownSlide 0.3s ease-out;
-          opacity: 1;
-          transform: translateX(-50%) translateY(0);
-          transition: opacity 0.2s ease, transform 0.2s ease;
-          z-index: 1001;
+          position: absolute !important;
+          top: calc(100% + 1.5625rem) !important;
+          left: 50% !important;
+          background: white !important;
+          border: 1px solid #e5e5e5 !important;
+          border-radius: 0.5rem !important;
+          box-shadow: 0 0.625rem 2.5rem rgba(0, 0, 0, 0.1) !important;
+          padding: 2rem !important;
+          min-width: 37.5rem !important;
+          animation: dropdownSlide 0.3s ease-out !important;
+          opacity: 1 !important;
+          transform: translateX(-50%) translateY(0) !important;
+          transition: opacity 0.2s ease, transform 0.2s ease !important;
+          z-index: 1001 !important;
         }
 
         .dropdown-content {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 40px;
+          display: grid !important;
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 2.5rem !important;
         }
 
         .dropdown-section {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 1rem !important;
         }
 
         .dropdown-section-title {
-          font-size: 12px;
-          font-weight: 600;
-          color: #999;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 8px;
+          font-size: 0.75rem !important;
+          font-weight: 600 !important;
+          color: #999 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.03125rem !important;
+          margin-bottom: 0.5rem !important;
         }
 
         .dropdown-list {
-          list-style: none;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
+          list-style: none !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 0.75rem !important;
         }
 
         .dropdown-item {
-          color: #333;
-          text-decoration: none;
-          font-size: 15px;
-          font-weight: 500;
-          transition: color 0.3s;
-          display: block;
+          color: #333 !important;
+          text-decoration: none !important;
+          font-size: 0.9375rem !important;
+          font-weight: 500 !important;
+          transition: color 0.3s !important;
+          display: block !important;
+          white-space: nowrap !important;
         }
 
         .dropdown-item:hover {
-          color: #3D0092;
+          color: #3D0092 !important;
         }
 
         .nav-actions {
-          display: flex;
-          align-items: center;
-          gap: 12px;
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.75rem !important;
+          flex-shrink: 0 !important;
         }
 
-        .btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 14px 26px;
-          border-radius: 999px;
-          font-weight: 600;
-          cursor: pointer;
-          font-size: 16px;
-          border: 1px solid rgba(0,0,0,0.08);
-          background: white;
-          color: #0b1220;
-          transition: all .18s ease;
-          white-space: nowrap;
+        .nav-actions .btn {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 0.5rem !important;
+          padding: 0.75rem 1.5rem !important;
+          border-radius: 62.4375rem !important;
+          font-weight: 600 !important;
+          cursor: pointer !important;
+          font-size: 0.9375rem !important;
+          border: 1px solid rgba(0,0,0,0.08) !important;
+          background: white !important;
+          color: #0b1220 !important;
+          transition: all .18s ease !important;
+          white-space: nowrap !important;
+          min-height: 2.75rem !important;
+          box-sizing: border-box !important;
+          flex-shrink: 0 !important;
         }
 
-        .btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+        .nav-actions .btn:hover {
+          transform: translateY(-0.125rem) !important;
+          box-shadow: 0 0.625rem 1.75rem rgba(0,0,0,0.12) !important;
         }
 
-        .btn-primary {
-          background: linear-gradient(135deg, #0025ff, #4d6cff);
-          border: none;
-          color: white;
-          box-shadow: 0 10px 28px rgba(0,37,255,0.30);
+        .nav-actions .nav-btn-primary {
+          background: linear-gradient(135deg, #0025ff, #4d6cff) !important;
+          border: none !important;
+          color: white !important;
+          box-shadow: 0 0.625rem 1.75rem rgba(0,37,255,0.30) !important;
+          font-size: 0.9375rem !important;
+          min-height: 2.75rem !important;
+          padding: 0.75rem 1.5rem !important;
         }
 
-        .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 12px 32px rgba(0,37,255,0.40);
+        .nav-actions .nav-btn-primary:hover {
+          transform: translateY(-0.125rem) !important;
+          box-shadow: 0 0.75rem 2rem rgba(0,37,255,0.40) !important;
+        }
+
+        .nav-actions .nav-btn-secondary {
+          font-size: 0.9375rem !important;
+          min-height: 2.75rem !important;
+          padding: 0.75rem 1.5rem !important;
         }
 
         .hamburger {
-          display: none;
-          width: 48px;
-          height: 48px;
-          border-radius: 999px;
-          border: 1px solid rgba(0,0,0,0.08);
-          background: white;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
+          display: none !important;
+          width: 2.75rem !important;
+          height: 2.75rem !important;
+          border-radius: 62.4375rem !important;
+          border: 1px solid rgba(0,0,0,0.08) !important;
+          background: white !important;
+          align-items: center !important;
+          justify-content: center !important;
+          cursor: pointer !important;
+          flex-shrink: 0 !important;
         }
 
-        /* Mobile Sidebar Styles */
         .mobile-sidebar {
-          position: fixed;
-          top: 0;
-          right: -100%;
-          width: 320px;
-          height: 100vh;
-          background: white;
-          box-shadow: -5px 0 25px rgba(0,0,0,0.15);
-          z-index: 1002;
-          transition: right 0.3s ease;
-          display: flex;
-          flex-direction: column;
+          position: fixed !important;
+          top: 0 !important;
+          right: -100% !important;
+          width: 20rem !important;
+          height: 100vh !important;
+          background: white !important;
+          box-shadow: -0.3125rem 0 1.5625rem rgba(0,0,0,0.15) !important;
+          z-index: 1002 !important;
+          transition: right 0.3s ease !important;
+          display: flex !important;
+          flex-direction: column !important;
         }
 
         .mobile-sidebar.open {
-          right: 0;
+          right: 0 !important;
         }
 
         .sidebar-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0,0,0,0.5);
-          z-index: 1001;
-          opacity: 0;
-          visibility: hidden;
-          transition: all 0.3s ease;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          background: rgba(0,0,0,0.5) !important;
+          z-index: 1001 !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
+          transition: all 0.3s ease !important;
         }
 
         .sidebar-overlay.open {
-          opacity: 1;
-          visibility: visible;
+          opacity: 1 !important;
+          visibility: visible !important;
         }
 
         .sidebar-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 20px;
-          border-bottom: 1px solid #e5e5e5;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding: 1.25rem !important;
+          border-bottom: 1px solid #e5e5e5 !important;
         }
 
         .sidebar-logo {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          cursor: pointer;
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.75rem !important;
+          cursor: pointer !important;
         }
 
         .sidebar-logo-icon {
-          width: 32px;
-          height: 32px;
-          color: #3D0092;
+          width: 2rem !important;
+          height: 2rem !important;
+          color: #3D0092 !important;
+          flex-shrink: 0 !important;
         }
 
         .sidebar-logo-text {
-          font-size: 20px;
-          font-weight: 700;
-          color: #000;
+          font-size: 1.25rem !important;
+          font-weight: 700 !important;
+          color: #000 !important;
+          white-space: nowrap !important;
         }
 
         .sidebar-close {
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: #666;
-          padding: 8px;
-          border-radius: 6px;
-          transition: background-color 0.2s;
+          background: none !important;
+          border: none !important;
+          cursor: pointer !important;
+          color: #666 !important;
+          padding: 0.5rem !important;
+          border-radius: 0.375rem !important;
+          transition: background-color 0.2s !important;
+          flex-shrink: 0 !important;
         }
 
         .sidebar-close:hover {
-          background-color: #f5f5f5;
+          background-color: #f5f5f5 !important;
         }
 
         .sidebar-content {
-          flex: 1;
-          padding: 20px;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
+          flex: 1 !important;
+          padding: 1.25rem !important;
+          overflow-y: auto !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: space-between !important;
         }
 
         .sidebar-section {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 0.75rem !important;
         }
 
         .sidebar-link {
-          display: block;
-          padding: 14px 16px;
-          color: #222;
-          text-decoration: none;
-          font-size: 16px;
-          font-weight: 600;
-          border-radius: 8px;
-          transition: all 0.2s ease;
+          display: block !important;
+          padding: 0.875rem 1rem !important;
+          color: #222 !important;
+          text-decoration: none !important;
+          font-size: 1rem !important;
+          font-weight: 600 !important;
+          border-radius: 0.5rem !important;
+          transition: all 0.2s ease !important;
+          white-space: nowrap !important;
         }
 
         .sidebar-link:hover {
-          background-color: #f5f5f5;
-          color: #3D0092;
+          background-color: #f5f5f5 !important;
+          color: #3D0092 !important;
         }
 
         .sidebar-dropdown {
-          margin-top: 8px;
+          margin-top: 0.5rem !important;
         }
 
         .sidebar-dropdown-btn {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 14px 16px;
-          background: none;
-          border: none;
-          color: #222;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          border-radius: 8px;
-          transition: background-color 0.2s;
+          width: 100% !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding: 0.875rem 1rem !important;
+          background: none !important;
+          border: none !important;
+          color: #222 !important;
+          font-size: 1rem !important;
+          font-weight: 600 !important;
+          cursor: pointer !important;
+          border-radius: 0.5rem !important;
+          transition: background-color 0.2s !important;
+          white-space: nowrap !important;
         }
 
         .sidebar-dropdown-btn:hover {
-          background-color: #f5f5f5;
+          background-color: #f5f5f5 !important;
         }
 
         .sidebar-dropdown-arrow {
-          margin-left: 4px;
+          margin-left: 0.25rem !important;
+          flex-shrink: 0 !important;
         }
 
         .sidebar-dropdown-content {
-          margin-top: 8px;
-          padding-left: 16px;
-          border-left: 2px solid #e5e5e5;
+          margin-top: 0.5rem !important;
+          padding-left: 1rem !important;
+          border-left: 0.125rem solid #e5e5e5 !important;
         }
 
         .sidebar-dropdown-section {
-          margin-bottom: 16px;
+          margin-bottom: 1rem !important;
         }
 
         .sidebar-dropdown-title {
-          font-size: 12px;
-          color: #999;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 8px;
-          font-weight: 600;
+          font-size: 0.75rem !important;
+          color: #999 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.03125rem !important;
+          margin-bottom: 0.5rem !important;
+          font-weight: 600 !important;
         }
 
         .sidebar-dropdown-items {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 0.5rem !important;
         }
 
         .sidebar-dropdown-item {
-          display: block;
-          padding: 10px 12px;
-          color: #333;
-          text-decoration: none;
-          font-size: 14px;
-          font-weight: 500;
-          border-radius: 6px;
-          transition: all 0.2s;
+          display: block !important;
+          padding: 0.625rem 0.75rem !important;
+          color: #333 !important;
+          text-decoration: none !important;
+          font-size: 0.875rem !important;
+          font-weight: 500 !important;
+          border-radius: 0.375rem !important;
+          transition: all 0.2s !important;
+          white-space: nowrap !important;
         }
 
         .sidebar-dropdown-item:hover {
-          background-color: #f0f0f0;
-          color: #3D0092;
+          background-color: #f0f0f0 !important;
+          color: #3D0092 !important;
         }
 
         .sidebar-actions {
-          padding: 20px 0;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
+          padding: 1.25rem 0 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 0.75rem !important;
         }
 
         .sidebar-btn {
-          padding: 14px 20px;
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 16px;
-          cursor: pointer;
-          border: 1px solid rgba(0,0,0,0.08);
-          background: white;
-          color: #0b1220;
-          transition: all 0.2s;
+          padding: 0.875rem 1.25rem !important;
+          border-radius: 0.5rem !important;
+          font-weight: 600 !important;
+          font-size: 1rem !important;
+          cursor: pointer !important;
+          border: 1px solid rgba(0,0,0,0.08) !important;
+          background: white !important;
+          color: #0b1220 !important;
+          transition: all 0.2s !important;
+          white-space: nowrap !important;
         }
 
         .sidebar-btn:hover {
-          background-color: #f5f5f5;
+          background-color: #f5f5f5 !important;
         }
 
         .sidebar-btn-primary {
-          padding: 14px 20px;
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 16px;
-          cursor: pointer;
-          border: none;
-          background: linear-gradient(135deg, #0025ff, #4d6cff);
-          color: white;
-          transition: all 0.2s;
+          padding: 0.875rem 1.25rem !important;
+          border-radius: 0.5rem !important;
+          font-weight: 600 !important;
+          font-size: 1rem !important;
+          cursor: pointer !important;
+          border: none !important;
+          background: linear-gradient(135deg, #0025ff, #4d6cff) !important;
+          color: white !important;
+          transition: all 0.2s !important;
+          white-space: nowrap !important;
         }
 
         .sidebar-btn-primary:hover {
-          opacity: 0.9;
+          opacity: 0.9 !important;
         }
 
         @keyframes dropdownSlide {
           from {
             opacity: 0;
-            transform: translateX(-50%) translateY(-10px);
+            transform: translateX(-50%) translateY(-0.625rem);
           }
           to {
             opacity: 1;
@@ -769,113 +759,244 @@ const Navbar = () => {
           }
         }
 
-        /* REMOVED body padding-top - each page should handle its own padding */
-
         /* RESPONSIVE STYLES */
         @media (max-width: 1200px) {
           .nav-content {
-            padding: 20px 24px;
+            padding: 1.25rem 1.5rem !important;
           }
           
           .navbar {
-            max-width: calc(100% - 40px) !important;
+            max-width: calc(100% - 2.5rem) !important;
+          }
+          
+          .nav-links {
+            margin-right: 10rem !important;
+            gap: 1.25rem !important;
           }
         }
 
         @media (max-width: 1024px) {
           .nav-links {
-            margin-right: 10rem;
-            gap: 20px;
+            margin-right: 5rem !important;
+            gap: 1rem !important;
+          }
+          
+          .nav-actions .btn,
+          .nav-actions .nav-btn-primary,
+          .nav-actions .nav-btn-secondary {
+            padding: 0.75rem 1.25rem !important;
+            font-size: 0.875rem !important;
           }
         }
 
         @media (max-width: 768px) {
           .navbar {
-            padding: 0 20px !important;
-            height: 65px;
-            top: 15px !important; /* Slightly less offset on mobile */
-            max-width: calc(100% - 30px) !important;
+            padding: 0 1.25rem !important;
+            height: 4.0625rem !important;
+            top: 0.9375rem !important;
           }
 
           .nav-content {
-            padding: 15px 0;
-            height: 60px;
+            padding: 0.9375rem 0 !important;
+            height: 3.75rem !important;
           }
 
           .nav-links {
-            display: none;
+            display: none !important;
           }
 
           .hamburger {
-            display: flex;
+            display: flex !important;
           }
 
           .logo-text {
-            font-size: 20px;
+            font-size: 1.25rem !important;
           }
 
           .logo-icon {
-            width: 28px;
-            height: 28px;
+            width: 1.75rem !important;
+            height: 1.75rem !important;
           }
 
           .nav-actions {
-            gap: 8px;
+            gap: 0.5rem !important;
           }
 
-          .btn {
-            padding: 12px 20px;
-            font-size: 14px;
+          .nav-actions .btn,
+          .nav-actions .nav-btn-primary,
+          .nav-actions .nav-btn-secondary {
+            padding: 0.75rem 1.25rem !important;
+            font-size: 0.875rem !important;
+            min-height: 2.5rem !important;
           }
           
           .mobile-sidebar {
-            width: 280px;
+            width: 17.5rem !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .navbar {
+            padding: 0 1rem !important;
+            height: 3.75rem !important;
+            top: 0.625rem !important;
+          }
+
+          .nav-content {
+            padding: 0.625rem 0 !important;
+          }
+
+          .nav-actions .btn,
+          .nav-actions .nav-btn-primary,
+          .nav-actions .nav-btn-secondary {
+            padding: 0.625rem 1rem !important;
+            font-size: 0.8125rem !important;
+            min-height: 2.25rem !important;
+          }
+
+          .logo-text {
+            font-size: 1.125rem !important;
+          }
+
+          .logo-icon {
+            width: 1.5rem !important;
+            height: 1.5rem !important;
+          }
+          
+          .mobile-sidebar {
+            width: 100% !important;
+            max-width: 20rem !important;
           }
         }
 
         @media (max-width: 480px) {
           .navbar {
-            padding: 0 16px !important;
-            height: 60px;
-            top: 10px !important; /* Less offset on small screens */
-            max-width: calc(100% - 20px) !important;
+            padding: 0 0.875rem !important;
+            height: 3.5rem !important;
+            top: 0.5rem !important;
+            border-radius: 0.75rem !important;
           }
 
           .nav-content {
-            padding: 10px 0;
+            padding: 0.5rem 0 !important;
           }
 
-          .btn {
-            padding: 10px 16px;
-            font-size: 13px;
-          }
-          
-          .mobile-sidebar {
-            width: 100%;
-            max-width: 320px;
-          }
-        }
-
-        @media (max-width: 360px) {
-          .navbar {
-            padding: 0 12px !important;
-            height: 55px;
-            top: 8px !important;
-            max-width: calc(100% - 16px) !important;
+          .nav-actions .btn,
+          .nav-actions .nav-btn-primary,
+          .nav-actions .nav-btn-secondary {
+            padding: 0.5625rem 0.875rem !important;
+            font-size: 0.75rem !important;
+            min-height: 2rem !important;
           }
 
-          .nav-actions {
-            gap: 6px;
+          .logo-text {
+            font-size: 1rem !important;
           }
 
-          .btn {
-            padding: 8px 12px;
-            font-size: 12px;
+          .logo-icon {
+            width: 1.375rem !important;
+            height: 1.375rem !important;
           }
 
           .hamburger {
-            width: 40px;
-            height: 40px;
+            width: 2.5rem !important;
+            height: 2.5rem !important;
+          }
+
+          .sidebar-header {
+            padding: 1rem !important;
+          }
+
+          .sidebar-logo-text {
+            font-size: 1.125rem !important;
+          }
+
+          .sidebar-logo-icon {
+            width: 1.75rem !important;
+            height: 1.75rem !important;
+          }
+
+          .sidebar-link {
+            font-size: 0.9375rem !important;
+            padding: 0.75rem 0.875rem !important;
+          }
+
+          .sidebar-btn,
+          .sidebar-btn-primary {
+            font-size: 0.9375rem !important;
+            padding: 0.75rem 1rem !important;
+          }
+        }
+
+        @media (max-width: 375px) {
+          .navbar {
+            padding: 0 0.75rem !important;
+            height: 3.25rem !important;
+            top: 0.375rem !important;
+          }
+
+          .nav-actions {
+            gap: 0.375rem !important;
+          }
+
+          .nav-actions .btn,
+          .nav-actions .nav-btn-primary,
+          .nav-actions .nav-btn-secondary {
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.6875rem !important;
+            min-height: 1.875rem !important;
+          }
+
+          .logo-text {
+            font-size: 0.9375rem !important;
+          }
+
+          .logo-icon {
+            width: 1.25rem !important;
+            height: 1.25rem !important;
+          }
+
+          .hamburger {
+            width: 2.25rem !important;
+            height: 2.25rem !important;
+          }
+        }
+
+        @media (max-width: 320px) {
+          .navbar {
+            padding: 0 0.625rem !important;
+            height: 3rem !important;
+            top: 0.3125rem !important;
+          }
+
+          .nav-actions .btn,
+          .nav-actions .nav-btn-primary,
+          .nav-actions .nav-btn-secondary {
+            padding: 0.4375rem 0.625rem !important;
+            font-size: 0.625rem !important;
+            min-height: 1.75rem !important;
+          }
+
+          .logo-text {
+            font-size: 0.875rem !important;
+          }
+
+          .logo-icon {
+            width: 1.125rem !important;
+            height: 1.125rem !important;
+          }
+
+          .hamburger {
+            width: 2rem !important;
+            height: 2rem !important;
+          }
+
+          .nav-actions {
+            gap: 0.25rem !important;
+          }
+
+          .mobile-sidebar {
+            width: 100% !important;
           }
         }
       `}</style>

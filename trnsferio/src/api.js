@@ -1,4 +1,4 @@
-// src/api.js
+// src/api.js - COMPLETE UPDATED VERSION
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 let _token = null;
@@ -65,7 +65,137 @@ async function fetchWithAuth(url, opts = {}) {
   return body;
 }
 
+/**
+ * OTP Functions
+ */
+
+/**
+ * Send OTP to mobile number
+ * @param {Object} data - { mobileNo: string }
+ * @returns {Promise<Object>} - Response from server
+ */
+export async function sendOTP(data) {
+  try {
+    const response = await fetch(`${API_BASE}/api/send-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      const error = new Error(result.error || `HTTP ${response.status}`);
+      error.status = response.status;
+      error.body = result;
+      throw error;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    
+    // Enhanced error messages
+    if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+      throw new Error('Network connection failed. Please check your internet connection.');
+    }
+    
+    if (error.status === 400) {
+      throw new Error('Invalid mobile number format. Please check and try again.');
+    }
+    
+    if (error.status === 500) {
+      throw new Error('Server error. Please try again in a moment.');
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * Verify OTP
+ * @param {Object} data - { mobileNo: string, otp: string }
+ * @returns {Promise<Object>} - Response from server
+ */
+export async function verifyOTP(data) {
+  try {
+    const response = await fetch(`${API_BASE}/api/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      const error = new Error(result.error || `HTTP ${response.status}`);
+      error.status = response.status;
+      error.body = result;
+      throw error;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    
+    // Enhanced error messages
+    if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+      throw new Error('Network connection failed. Please check your internet connection.');
+    }
+    
+    if (error.status === 400) {
+      throw new Error('Invalid OTP or mobile number.');
+    }
+    
+    if (error.status === 401) {
+      throw new Error('OTP verification failed. Please try again.');
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * Check OTP status
+ * @param {Object} data - { mobileNo: string }
+ * @returns {Promise<Object>} - Response from server
+ */
+export async function checkOTPStatus(data) {
+  try {
+    const response = await fetch(`${API_BASE}/api/check-otp-status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      const error = new Error(result.error || `HTTP ${response.status}`);
+      error.status = response.status;
+      error.body = result;
+      throw error;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Check OTP status error:', error);
+    throw error;
+  }
+}
+
 export const api = {
+  // OTP Functions
+  sendOTP,
+  verifyOTP,
+  checkOTPStatus,
+
   // Health check
   healthCheck: async () => {
     return await fetchWithAuth(`${API_BASE}/api/health`, { method: 'GET' });

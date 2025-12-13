@@ -62,7 +62,8 @@ export default function TrnzioHomepage() {
             background: linear-gradient(135deg, #0025ff, #4d6cff);
             display: grid; place-items: center; color: white; margin-bottom: 16px;
           }
-
+           
+          
           /* headings and summary sizes nudged up a bit */
           details summary { cursor: pointer; font-weight: 700; font-size: 1.10rem; }
           details[open] summary { margin-bottom: 10px; }
@@ -253,18 +254,8 @@ export default function TrnzioHomepage() {
                 {/* Increased gap between hero text and cards */}
                 <div style={{ marginBottom: '26px' }} />
 
-                <div className="hero-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '18px', marginBottom: '46px' }}>
-                  {['10M+', '150+', '99.99%'].map((num, i) => (
-                    <div key={i} className="card" style={{ padding: '22px', textAlign: 'center' }}>
-                      <div style={{ fontWeight: 800, fontSize: 'clamp(1.8rem, 3vw, 2.2rem)', color: '#0025ff' }}>{num}</div>
-                      <div style={{ color: '#444', fontSize: '14.5px', marginTop: '8px' }}>
-                        {i===0 ? 'Cards Issued' : i===1 ? 'Countries' : 'Uptime'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
 
-                <div className="hero-buttons" style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap' }}>
+                <div className="hero-buttons" style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap', marginTop: '4rem' }}>
                   <a href="#" className="btn btn-primary" style={{ padding: '14px 36px', fontSize: '15px' }}>Get Started Free</a>
                   <a href="#" className="btn" style={{ gap: '10px', padding: '14px 36px', fontSize: '15px' }}>
                     <Play size={18} /> Watch Demo
@@ -357,15 +348,15 @@ export default function TrnzioHomepage() {
                 display: "grid",
                 gridTemplateColumns: "repeat(3, 1fr)",
                 gap: "26px",
+                marginBottom: "5rem",
+                marginTop: "5rem",
               }}
             >
               {[
-                { icon: <Zap />, title: "Instant Issuance", desc: "Create virtual cards in milliseconds with a single API call" },
-                { icon: <Shield />, title: "Bank-Grade Security", desc: "PCI DSS Level 1, tokenization, 3D Secure, fraud monitoring" },
-                { icon: <Globe />, title: "Global Coverage", desc: "Issue cards in 150+ countries with local currency support" },
-                { icon: <TrendingUp />, title: "Real-time Analytics", desc: "Live dashboards, alerts, and exportable reports" },
-                { icon: <CreditCard />, title: "Granular Controls", desc: "Per-card limits, MCC locks, velocity rules, auto-freeze" },
-                { icon: <Check />, title: "API & Webhooks", desc: "Full REST API, SDKs, real-time event streaming" }
+                { icon: <Zap />, title: "Tailored to Your Purchase", desc: "Trnzio gives customers instant access to multiple credit card options from top banks, right at checkout. Choose the card that delivers the maximum savings and benefits for your purchase." },
+                { icon: <Shield />, title: "Maximize Every Offer, Every Time", desc: "From cashback to brand-exclusive discounts, Trnzio ensures you never miss a deal. Activate your card instantly and apply the offer to your purchase in one seamless flow." },
+                { icon: <Globe />, title: "One Journey. Full Activation. Zero Complexity.", desc: "Apply → Get approved → Activate → Pay.A complete credit experience delivered in under a few minutes — powered by Trnzio." },
+               
               ].map((f, i) => (
                 <div
                   key={i}
@@ -402,13 +393,13 @@ export default function TrnzioHomepage() {
         </section>
 
         {/* SOLUTIONS / SHOWCASE */}
-        <section id="solutions" style={{ padding: '90px 0', background: '#fafbff' }}>
+        <section id="solutions" style={{ padding: '90px 0', background: '#fafbff',marginTop: '-2rem' }}>
           <div className="container">
             <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.6rem)', fontWeight: 800, textAlign: 'center', marginBottom: '30px' }}>
               Why Choose Trnzio?
             </h2>
 
-            <p style={{ textAlign: 'center', color: '#666', maxWidth: '70ch', margin: '0 auto 28px', fontSize: 'clamp(1rem, 2vw, 2rem)' }}>
+            <p style={{ textAlign: 'center', color: '#666', maxWidth: '70ch', margin: '0 auto 28px', fontSize: 'clamp(1rem, 2vw, 2rem)',marginBottom: '3rem' }}>
               Join hundreds of companies transforming their payment experiences
             </p>
 
@@ -461,7 +452,7 @@ export default function TrnzioHomepage() {
         </section>
 
         {/* PRICING/SHOWCASE */}
-        <section id="pricing" style={{ padding: '50px 0' }}>
+        <section id="pricing" style={{ padding: '50px 0', marginTop: '-3rem' }}>
           <div className="container">
             <div className="showcase-grid"
               style={{
@@ -581,46 +572,12 @@ export default function TrnzioHomepage() {
           </div>
         </section>
 
-        {/* TESTIMONIALS */}
-        <section style={{ padding: '90px 0', background: '#fafbff' }}>
-          <div className="container" style={{ textAlign: 'center' }}>
-            <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.6rem)', fontWeight: 800, marginBottom: '30px' }}>
-              Loved by modern finance teams
-            </h2>
+    
 
-            <div style={{ marginBottom: '10px' }} />
-
-            <div className="testimonials" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '28px' }}>
-              {[
-                { quote: "Trnzio cut our card issuance time from days to seconds. Absolute game-changer for scaling.", name: "Sarah Chen", role: "CFO @ TechCorp" },
-                { quote: "The security and compliance features give us complete peace of mind. Best in class.", name: "Michael Rodriguez", role: "VP Ops @ FinanceHub" },
-                { quote: "We were live in under a week. The API is incredible.", name: "Emma Watson", role: "CTO @ StartupX" }
-              ].map((t, i) => (
-                <div key={i} className="card">
-                  <p style={{ fontSize: 'clamp(0.9rem, 1.5vw, 1.06rem)', fontStyle: 'italic', marginBottom: '18px', color: '#333' }}>"{t.quote}"</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{
-                      width: '56px', height: '56px', borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #0025ff, #4d6cff)',
-                      display: 'grid', placeItems: 'center', color: 'white', fontSize: '18px', fontWeight: 700
-                    }}>
-                      {t.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: 'clamp(0.95rem, 1.5vw, 1.08rem)', fontWeight: 600 }}>{t.name}</div>
-                      <div style={{ color: '#666', fontSize: 'clamp(0.85rem, 1.5vw, 1.0rem)' }}>{t.role}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section id="faq" style={{ padding: '90px 0' }}>
+   
+        <section id="faq" style={{ padding: '90px 0', marginTop: '-3rem' }}>
           <div className="container">
-            <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.6rem)', fontWeight: 800, textAlign: 'center', marginBottom: '30px' }}>
+            <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.6rem)', fontWeight: 800, textAlign: 'center', marginBottom: '4rem' }}>
               Frequently Asked Questions
             </h2>
             <div className="faq-grid" style={{ display: 'grid', gap: '14px', gridTemplateColumns: '1fr 1fr', maxWidth: '1000px', margin: '0 auto' }}>
@@ -649,54 +606,168 @@ export default function TrnzioHomepage() {
         </section>
 
         {/* FOOTER */}
-        <footer style={{ padding: '72px 0 32px', background: '#0a0d14', color: '#aaa' }}>
-          <div className="container">
-            <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: '40px', marginBottom: '36px' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                  <span style={{
-                    width: '40px', height: '40px', borderRadius: '12px',
-                    background: 'conic-gradient(from 210deg, #0025ff, #4d6cff, #0025ff)'
-                  }} />
-                  <span style={{ fontSize: '21px', fontWeight: 800, color: 'white' }}>Trnzio</span>
-                </div>
-                <p style={{ fontSize: '14.5px', maxWidth: '380px' }}>
-                  Instant virtual cards for the modern business era.
-                </p>
-              </div>
-              <div>
-                <h4 style={{ color: 'white', fontSize: '14.5px', marginBottom: '8px' }}>Product</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13.5px' }}>
-                  <a href="#features">Features</a>
-                  <a href="#pricing">Pricing</a>
-                  <a href="#">API Docs</a>
-                  <a href="#">Status</a>
-                </div>
-              </div>
-              <div>
-                <h4 style={{ color: 'white', fontSize: '14.5px', marginBottom: '8px' }}>Company</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13.5px' }}>
-                  <a href="#">About</a>
-                  <a href="#">Careers</a>
-                  <a href="#">Blog</a>
-                  <a href="#">Contact</a>
-                </div>
-              </div>
-              <div>
-                <h4 style={{ color: 'white', fontSize: '14.5px', marginBottom: '8px' }}>Legal</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13.5px' }}>
-                  <a href="#">Privacy</a>
-                  <a href="#">Terms</a>
-                  <a href="#">Security</a>
-                  <a href="#">Licenses</a>
-                </div>
-              </div>
-            </div>
-            <div style={{ textAlign: 'center', fontSize: '13.5px', color: '#666' }}>
-              © 2025 Trnzio. All rights reserved.
-            </div>
-          </div>
-        </footer>
+     <footer style={{ padding: '72px 0 32px', background: '#0a0d14', color: '#aaa' }}>
+  <div className="container">
+    <div
+      className="footer-grid"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '2.5fr 1fr 1fr 1fr',
+        gap: '40px',
+        marginBottom: '36px'
+      }}
+    >
+      {/* Brand */}
+      <div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '12px',
+            cursor: 'pointer'
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            width="32"
+            height="32"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M3 6L9 12L3 18"
+              stroke="#566df1ff"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M9 6L15 12L9 18"
+              stroke="#a13d07ff"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M15 6L21 12L15 18"
+              stroke="#00A300"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+
+          <span
+            style={{
+              fontSize: '22px',
+              fontWeight: 700,
+              color: 'white',
+              letterSpacing: '-0.3px'
+            }}
+          >
+            TrnZio
+          </span>
+        </div>
+
+        <p style={{ fontSize: '14.5px', maxWidth: '380px', lineHeight: 1.6 }}>
+          Instant virtual cards for the modern business era.
+        </p>
+      </div>
+
+      {/* Product */}
+      <div>
+        <h4 style={{ color: 'white', fontSize: '14.5px', marginBottom: '10px' }}>
+          Product
+        </h4>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            fontSize: '13.5px'
+          }}
+        >
+          <a href="#features">Features</a>
+          <a href="#pricing">Solutions</a>
+        </div>
+      </div>
+
+      {/* Company */}
+      <div>
+        <h4 style={{ color: 'white', fontSize: '14.5px', marginBottom: '10px' }}>
+          Company
+        </h4>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            fontSize: '13.5px'
+          }}
+        >
+          <a href="#">About us</a>
+          <a href="#">Why TrnZio</a>
+        </div>
+      </div>
+
+      {/* Legal */}
+      <div>
+        <h4 style={{ color: 'white', fontSize: '14.5px', marginBottom: '10px' }}>
+          Legal
+        </h4>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            fontSize: '13.5px'
+          }}
+        >
+          <a href="#">Privacy Policy</a>
+        </div>
+      </div>
+    </div>
+
+    {/* Bottom */}
+    <div
+      style={{
+        textAlign: 'center',
+        fontSize: '13.5px',
+        color: '#666'
+      }}
+    >
+      © 2025 TrnZio. All rights reserved.
+    </div>
+  </div>
+
+  <style>{`
+    footer a {
+      color: #aaa;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    footer a:hover {
+      color: #ffffff;
+    }
+
+    @media (max-width: 900px) {
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+        row-gap: 32px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+        text-align: left;
+      }
+    }
+  `}</style>
+</footer>
+
       </div>
     </>
   );
