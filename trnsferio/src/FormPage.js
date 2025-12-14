@@ -628,7 +628,6 @@ function FormPageTwo({ formData, setFormData, onBack, onSubmit, loading }) {
   );
 }
 
-// Main FormPage Component - UPDATED to handle auto-submission after OTP
 export default function FormPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -646,6 +645,10 @@ export default function FormPage() {
     amount: ""
   });
 
+  // Demo user state
+  const [isDemoUser, setIsDemoUser] = useState(false);
+  const [demoUserInfo, setDemoUserInfo] = useState(null);
+
   const [brands, setBrands] = useState([]);
   const [assets, setAssets] = useState([]);
   const [models, setModels] = useState([]);
@@ -658,7 +661,43 @@ export default function FormPage() {
   const [showResults, setShowResults] = useState(false);
   const [apiStatus, setApiStatus] = useState({ status: 'checking', message: '' });
 
-  // Handle return from OTP verification with auto-submission
+  useEffect(() => {
+
+    if (location.state?.isDemoUser) {
+      setIsDemoUser(true);
+      setDemoUserInfo({
+        demoUserId: location.state.demoUserId,
+        userName: location.state.userName,
+        userEmail: location.state.userEmail,
+        phoneNumber: location.state.phoneNumber
+      });
+      
+
+      
+      console.log("✅ Demo user detected (no pre-fill):", location.state);
+    } else {
+
+      const demoUserId = sessionStorage.getItem('demoUserId');
+      const demoUserEmail = sessionStorage.getItem('demoUserEmail');
+      const demoUserName = sessionStorage.getItem('demoUserName');
+      const demoUserPhone = sessionStorage.getItem('demoUserPhone');
+      
+      if (demoUserId) {
+        setIsDemoUser(true);
+        setDemoUserInfo({
+          demoUserId,
+          userName: demoUserName,
+          userEmail: demoUserEmail,
+          phoneNumber: demoUserPhone
+        });
+        
+
+        
+        console.log("✅ Demo user session restored (no pre-fill)");
+      }
+    }
+  }, [location]);
+
   useEffect(() => {
     const checkForPendingSubmission = async () => {
       const needsSubmission = sessionStorage.getItem('needsSubmission');
@@ -669,14 +708,13 @@ export default function FormPage() {
       if (needsSubmission === 'true' && otpVerified === 'true' && pendingData) {
         console.log("✅ OTP Verified - Auto-submitting form");
         
-        // Clear the submission flag
+
         sessionStorage.removeItem('needsSubmission');
         
-        // Parse and restore form data
+
         const parsedData = JSON.parse(pendingData);
         setFormData(parsedData);
-        
-        // Auto-submit the form
+
         await submitFormData(parsedData);
       }
     };
@@ -685,7 +723,8 @@ export default function FormPage() {
   }, []);
 
   useEffect(() => {
-    if (!auth || !auth.user) {
+
+    if (!isDemoUser && (!auth || !auth.user)) {
       return;
     }
 
@@ -707,7 +746,8 @@ export default function FormPage() {
     };
 
     initializeData();
-  }, [auth]);
+  }, [auth, isDemoUser]);
+
 
   const loadBrands = async () => {
     setLoadingBrands(true);
@@ -857,7 +897,8 @@ export default function FormPage() {
     return <DiscountResultsPage resultData={resultData} onBackToForm={handleBackToForm} />;
   }
 
-  if (!auth || !auth.user) {
+  // For demo users, skip auth check
+  if (!isDemoUser && (!auth || !auth.user)) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -877,6 +918,7 @@ export default function FormPage() {
     <>
       <style>
         {`
+          /* All your existing styles remain the same */
           @keyframes slideIn {
             0% { 
               transform: translateY(50px) scale(0.9);

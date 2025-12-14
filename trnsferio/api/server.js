@@ -1,6 +1,4 @@
-// server.js - UPDATED with Twilio Verify Service
-// server.js - UPDATED with Twilio Verify Service
-// Load .env from the same directory as server.js, not from CWD
+
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 const express = require("express");
@@ -263,7 +261,7 @@ app.post("/api/send-otp", async (req, res) => {
           
           // Clean up old records
           await db.execute(
-            "DELETE FROM otp_verifications WHERE mobile_no = ?",
+            "DELETE FROM sms_otp_verifications WHERE mobile_no = ?",
             [mobileNo]
           );
           
@@ -271,7 +269,7 @@ app.post("/api/send-otp", async (req, res) => {
           const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
           
           await db.execute(
-            `INSERT INTO otp_verifications (mobile_no, otp, expires_at, attempts, created_at, verification_method) 
+            `INSERT INTO sms_otp_verifications (mobile_no, otp, expires_at, attempts, created_at, verification_method) 
              VALUES (?, ?, ?, 0, NOW(), 'twilio_verify')`,
             [mobileNo, '000000', expiresAt]  // Use '000000' as placeholder, won't be validated
           );
@@ -303,12 +301,12 @@ app.post("/api/send-otp", async (req, res) => {
     console.log('⏰ Expires at:', expiresAt.toLocaleString());
 
     await db.execute(
-      "DELETE FROM otp_verifications WHERE mobile_no = ?",
+      "DELETE FROM sms_otp_verifications WHERE mobile_no = ?",
       [mobileNo]
     );
 
     await db.execute(
-      `INSERT INTO otp_verifications (mobile_no, otp, expires_at, attempts, created_at, verification_method) 
+      `INSERT INTO sms_otp_verifications (mobile_no, otp, expires_at, attempts, created_at, verification_method) 
        VALUES (?, ?, ?, 0, NOW(), 'database')`,
       [mobileNo, otp, expiresAt]
     );
@@ -365,7 +363,7 @@ app.post("/api/verify-otp", async (req, res) => {
 
     // Check if we should use Twilio Verify
     const [records] = await db.execute(
-      `SELECT * FROM otp_verifications 
+      `SELECT * FROM sms_otp_verifications 
        WHERE mobile_no = ? AND verified = 0
        ORDER BY created_at DESC LIMIT 1`,
       [mobileNo]
@@ -393,7 +391,7 @@ app.post("/api/verify-otp", async (req, res) => {
         if (result.success) {
           // Mark as verified in database
           await db.execute(
-            "UPDATE otp_verifications SET verified = 1, verified_at = NOW() WHERE id = ?",
+            "UPDATE sms_otp_verifications SET verified = 1, verified_at = NOW() WHERE id = ?",
             [record.id]
           );
           
@@ -410,7 +408,7 @@ app.post("/api/verify-otp", async (req, res) => {
           
           // Increment attempts
           await db.execute(
-            "UPDATE otp_verifications SET attempts = attempts + 1 WHERE id = ?",
+            "UPDATE sms_otp_verifications SET attempts = attempts + 1 WHERE id = ?",
             [record.id]
           );
           
@@ -435,7 +433,7 @@ app.post("/api/verify-otp", async (req, res) => {
     if (new Date() > new Date(record.expires_at)) {
       console.log('⏰ OTP expired');
       await db.execute(
-        "DELETE FROM otp_verifications WHERE mobile_no = ?",
+        "DELETE FROM sms_otp_verifications WHERE mobile_no = ?",
         [mobileNo]
       );
       
@@ -449,7 +447,7 @@ app.post("/api/verify-otp", async (req, res) => {
     if (record.attempts >= OTP_MAX_ATTEMPTS) {
       console.log('🚫 Max attempts exceeded');
       await db.execute(
-        "DELETE FROM otp_verifications WHERE mobile_no = ?",
+        "DELETE FROM sms_otp_verifications WHERE mobile_no = ?",
         [mobileNo]
       );
       
@@ -463,7 +461,7 @@ app.post("/api/verify-otp", async (req, res) => {
     if (record.otp !== otp) {
       console.log('❌ Invalid OTP');
       await db.execute(
-        "UPDATE otp_verifications SET attempts = attempts + 1 WHERE id = ?",
+        "UPDATE sms_otp_verifications SET attempts = attempts + 1 WHERE id = ?",
         [record.id]
       );
       
@@ -477,7 +475,7 @@ app.post("/api/verify-otp", async (req, res) => {
 
     // OTP is valid - mark as verified
     await db.execute(
-      "UPDATE otp_verifications SET verified = 1, verified_at = NOW() WHERE id = ?",
+      "UPDATE sms_otp_verifications SET verified = 1, verified_at = NOW() WHERE id = ?",
       [record.id]
     );
 
@@ -515,7 +513,7 @@ app.post("/api/check-otp-status", async (req, res) => {
     }
 
     const [records] = await db.execute(
-      `SELECT verified, verified_at FROM otp_verifications 
+      `SELECT verified, verified_at FROM sms_otp_verifications 
        WHERE mobile_no = ? AND verified = 1
        ORDER BY verified_at DESC LIMIT 1`,
       [mobileNo]
@@ -1288,6 +1286,371 @@ app.delete("/api/users", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to delete users"
+    });
+  }
+});
+
+// Add this endpoint to your server.js file
+
+// ==================== DEMO SIGNUP ENDPOINT ====================
+app.post("/api/demo-signup", async (req, res) => {
+  console.log('📝 POST /api/demo-signup - Request received');
+  
+  try {
+    const {
+      firstName,
+      lastName,
+      companyEmail,
+      phoneNumber,
+      country,
+      ipAddress,
+      userAgent,
+      referralSource,
+      companyName,
+      jobTitle
+    } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !companyEmail || !phoneNumber || !country) {
+      console.log('❌ Missing required fields');
+      return res.status(400).json({
+        success: false,
+        error: "First name, last name, email, phone number, and country are required"
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(companyEmail)) {
+      console.log('❌ Invalid email format');
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email format"
+      });
+    }
+
+    // Validate phone number format
+    const phoneRegex = /^[0-9+()-]+$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      console.log('❌ Invalid phone number format');
+      return res.status(400).json({
+        success: false,
+        error: "Invalid phone number format"
+      });
+    }
+
+    // Check if phone number is verified
+    const [verificationRecords] = await db.execute(
+      `SELECT verified FROM sms_otp_verifications 
+       WHERE mobile_no = ? AND verified = 1
+       ORDER BY verified_at DESC LIMIT 1`,
+      [phoneNumber]
+    );
+
+    if (verificationRecords.length === 0) {
+      console.log('❌ Phone number not verified');
+      return res.status(400).json({
+        success: false,
+        error: "Phone number must be verified before signup"
+      });
+    }
+
+    // Check if email already exists
+    const [existingEmail] = await db.execute(
+      "SELECT id FROM demo_users WHERE company_email = ? AND deleted_at IS NULL",
+      [companyEmail]
+    );
+
+    if (existingEmail.length > 0) {
+      console.log('❌ Email already registered');
+      return res.status(400).json({
+        success: false,
+        error: "This email is already registered for a demo"
+      });
+    }
+
+    // Check if phone number already exists
+    const [existingPhone] = await db.execute(
+      "SELECT id FROM demo_users WHERE phone_number = ? AND deleted_at IS NULL",
+      [phoneNumber]
+    );
+
+    if (existingPhone.length > 0) {
+      console.log('❌ Phone number already registered');
+      return res.status(400).json({
+        success: false,
+        error: "This phone number is already registered for a demo"
+      });
+    }
+
+    // Get IP address from request if not provided
+    const clientIp = ipAddress || 
+      req.headers['x-forwarded-for']?.split(',')[0] || 
+      req.headers['x-real-ip'] || 
+      req.connection.remoteAddress || 
+      req.socket.remoteAddress;
+
+    // Insert demo user
+    const insertQuery = `
+      INSERT INTO demo_users (
+        first_name,
+        last_name,
+        company_email,
+        phone_number,
+        country,
+        ip_address,
+        user_agent,
+        referral_source,
+        company_name,
+        job_title,
+        demo_status,
+        visit_count,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1, NOW())
+    `;
+
+    console.log("🚀 Inserting demo user:", companyEmail);
+
+    const [result] = await db.execute(insertQuery, [
+      firstName,
+      lastName,
+      companyEmail,
+      phoneNumber,
+      country,
+      clientIp,
+      userAgent || req.headers['user-agent'],
+      referralSource || 'direct',
+      companyName || null,
+      jobTitle || null
+    ]);
+
+    console.log("✅ Demo user registered successfully - ID:", result.insertId);
+
+    // Update demo status to active
+    await db.execute(
+      "UPDATE demo_users SET demo_status = 'active', last_demo_access = NOW() WHERE id = ?",
+      [result.insertId]
+    );
+
+    res.json({
+      success: true,
+      message: "Demo signup successful!",
+      demoId: result.insertId,
+      data: {
+        firstName,
+        lastName,
+        email: companyEmail,
+        phoneNumber,
+        country
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Demo signup error:", error);
+    
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({
+        success: false,
+        error: "Email or phone number already exists"
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Demo signup failed. Please try again.",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// ==================== GET DEMO USER INFO ====================
+app.get("/api/demo-user/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [users] = await db.execute(
+      `SELECT 
+        id,
+        first_name,
+        last_name,
+        company_email,
+        phone_number,
+        country,
+        company_name,
+        job_title,
+        demo_status,
+        last_demo_access,
+        visit_count,
+        created_at
+      FROM demo_users 
+      WHERE id = ? AND deleted_at IS NULL`,
+      [id]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Demo user not found"
+      });
+    }
+
+    // Update visit count and last access
+    await db.execute(
+      "UPDATE demo_users SET visit_count = visit_count + 1, last_demo_access = NOW() WHERE id = ?",
+      [id]
+    );
+
+    res.json({
+      success: true,
+      user: users[0]
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching demo user:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch demo user"
+    });
+  }
+});
+
+// ==================== UPDATE DEMO STATUS ====================
+app.put("/api/demo-user/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pending', 'active', 'completed', 'cancelled'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid status. Must be: pending, active, completed, or cancelled"
+      });
+    }
+
+    const [result] = await db.execute(
+      "UPDATE demo_users SET demo_status = ?, updated_at = NOW() WHERE id = ? AND deleted_at IS NULL",
+      [status, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Demo user not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Demo status updated successfully"
+    });
+
+  } catch (error) {
+    console.error("❌ Error updating demo status:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update demo status"
+    });
+  }
+});
+
+// ==================== LIST ALL DEMO USERS (ADMIN) ====================
+app.get("/api/demo-users", async (req, res) => {
+  try {
+    const { status, country, limit = 50, offset = 0 } = req.query;
+
+    let query = `
+      SELECT 
+        id,
+        first_name,
+        last_name,
+        company_email,
+        phone_number,
+        country,
+        company_name,
+        job_title,
+        demo_status,
+        last_demo_access,
+        visit_count,
+        created_at
+      FROM demo_users 
+      WHERE deleted_at IS NULL
+    `;
+    const params = [];
+
+    if (status) {
+      query += " AND demo_status = ?";
+      params.push(status);
+    }
+
+    if (country) {
+      query += " AND country = ?";
+      params.push(country);
+    }
+
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    params.push(parseInt(limit), parseInt(offset));
+
+    const [users] = await db.execute(query, params);
+
+    // Get total count
+    let countQuery = "SELECT COUNT(*) as total FROM demo_users WHERE deleted_at IS NULL";
+    const countParams = [];
+
+    if (status) {
+      countQuery += " AND demo_status = ?";
+      countParams.push(status);
+    }
+
+    if (country) {
+      countQuery += " AND country = ?";
+      countParams.push(country);
+    }
+
+    const [countResult] = await db.execute(countQuery, countParams);
+
+    res.json({
+      success: true,
+      count: users.length,
+      total: countResult[0].total,
+      users: users
+    });
+
+  } catch (error) {
+    console.error("❌ Error listing demo users:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch demo users"
+    });
+  }
+});
+
+// ==================== DELETE DEMO USER (SOFT DELETE) ====================
+app.delete("/api/demo-user/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [result] = await db.execute(
+      "UPDATE demo_users SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL",
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Demo user not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Demo user deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("❌ Error deleting demo user:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete demo user"
     });
   }
 });

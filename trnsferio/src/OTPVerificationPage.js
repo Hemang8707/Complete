@@ -1,4 +1,4 @@
-// OTPVerificationPage.js - UPDATED to redirect directly to discount page
+// OTPVerificationPage.js - UPDATED for demo signup flow
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api } from './api';
@@ -16,18 +16,22 @@ function OTPVerificationPage() {
   const [success, setSuccess] = useState("");
   const [formData, setFormData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDemoSignup, setIsDemoSignup] = useState(false);
   const inputRefs = useRef([]);
 
   // Get form data from location state or session storage
   useEffect(() => {
     if (location.state) {
       if (location.state.formData) {
-        setFormData(location.state.formData);
-        const mobileNumber = location.state.formData.mobileNo || "";
+        const data = location.state.formData;
+        setFormData(data);
+        setIsDemoSignup(data.isDemoSignup || false);
+        const mobileNumber = data.mobileNo || "";
         setMobileNo(mobileNumber);
         
         // Store form data in session
-        sessionStorage.setItem('pendingFormData', JSON.stringify(location.state.formData));
+        sessionStorage.setItem('pendingFormData', JSON.stringify(data));
+        sessionStorage.setItem('isDemoSignup', data.isDemoSignup ? 'true' : 'false');
       }
       
       // Auto-send OTP on page load
@@ -37,15 +41,18 @@ function OTPVerificationPage() {
     } else {
       // Try to restore from session storage
       const storedData = sessionStorage.getItem('pendingFormData');
+      const storedIsDemoSignup = sessionStorage.getItem('isDemoSignup') === 'true';
+      
       if (storedData) {
         const parsedData = JSON.parse(storedData);
         setFormData(parsedData);
+        setIsDemoSignup(storedIsDemoSignup);
         const mobileNumber = parsedData.mobileNo || "";
         setMobileNo(mobileNumber);
         sendOTP(mobileNumber);
       } else {
         // No form data available - redirect back
-        navigate("/form");
+        navigate(storedIsDemoSignup ? "/launchdemo" : "/form");
       }
     }
   }, [location, navigate]);
@@ -164,6 +171,73 @@ function OTPVerificationPage() {
     }
   };
 
+  const submitDemoUser = async (data) => {
+    console.log("📤 Submitting demo user to database...");
+    setIsSubmitting(true);
+    
+    try {
+      // Call the new demo signup endpoint
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/demo-signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          companyEmail: data.companyEmail,
+          phoneNumber: data.mobileNo,
+          country: data.country,
+          ipAddress: null, // Can be captured from request on backend
+          userAgent: navigator.userAgent,
+          referralSource: document.referrer || 'direct'
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log("✅ Demo user saved successfully:", result.demoId);
+        
+        // Store demo user info in session
+        sessionStorage.setItem('demoUserId', result.demoId);
+        sessionStorage.setItem('demoUserEmail', data.companyEmail);
+        sessionStorage.setItem('demoUserName', `${data.firstName} ${data.lastName}`);
+        sessionStorage.setItem('demoUserPhone', data.mobileNo);
+        sessionStorage.setItem('demoUserCountry', data.country);
+        
+        // Clear pending data
+        sessionStorage.removeItem('pendingFormData');
+        sessionStorage.removeItem('isDemoSignup');
+        
+        // Show success message
+        setSuccess("✓ Demo account created! Redirecting to form...");
+        
+        // Wait a moment then navigate to FormPage
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        navigate("/form", { 
+          state: { 
+            isDemoUser: true,
+            demoUserId: result.demoId,
+            userEmail: data.companyEmail,
+            userName: `${data.firstName} ${data.lastName}`,
+            phoneNumber: data.mobileNo
+          },
+          replace: true 
+        });
+      } else {
+        throw new Error(result.error || 'Failed to save demo user');
+      }
+    } catch (err) {
+      console.error("❌ Demo signup error:", err);
+      setError(err.message || "Failed to complete signup. Please try again.");
+      throw err;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const submitFormDirectly = async (data) => {
     console.log("📤 Submitting form directly to get discount results...");
     setIsSubmitting(true);
@@ -185,7 +259,6 @@ function OTPVerificationPage() {
       console.log("✅ Discount check complete, navigating to results");
       
       // Navigate to form page with result data
-      // The FormPage will detect this and show results
       sessionStorage.setItem('discountResult', JSON.stringify(result));
       sessionStorage.setItem('needsSubmission', 'true');
       
@@ -242,12 +315,18 @@ function OTPVerificationPage() {
         // Wait a moment to show success message
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Submit form directly and navigate to discount page
+        // Handle based on signup type
         if (formData) {
-          await submitFormDirectly(formData);
+          if (isDemoSignup) {
+            // Save demo user and navigate to form
+            await submitDemoUser(formData);
+          } else {
+            // Submit form directly and navigate to discount page
+            await submitFormDirectly(formData);
+          }
         } else {
           console.error("No form data available");
-          navigate("/form", { replace: true });
+          navigate(isDemoSignup ? "/launchdemo" : "/form", { replace: true });
         }
       } else {
         setError(response.error || "Invalid OTP. Please try again.");
@@ -292,14 +371,14 @@ function OTPVerificationPage() {
     
     // Navigate back with form data
     if (formData) {
-      navigate("/form", { 
+      navigate(isDemoSignup ? "/launchdemo" : "/form", { 
         state: { 
           formData: formData,
-          returnToPage2: true 
+          returnToPage2: !isDemoSignup 
         } 
       });
     } else {
-      navigate("/form");
+      navigate(isDemoSignup ? "/launchdemo" : "/form");
     }
   };
 
@@ -330,7 +409,7 @@ function OTPVerificationPage() {
           }}
           onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
         >
-          ← Back to Form
+          ← Back to {isDemoSignup ? 'Demo Form' : 'Form'}
         </button>
 
         <h2 style={styles.title}>OTP Verification</h2>
@@ -366,7 +445,7 @@ function OTPVerificationPage() {
           }}>
             <div style={styles.spinner}></div>
             <strong style={{ color: "#4d6cff" }}>
-              Processing your request...
+              {isDemoSignup ? 'Creating your demo account...' : 'Processing your request...'}
             </strong>
           </div>
         )}
@@ -490,7 +569,7 @@ function OTPVerificationPage() {
               📱 Mobile: {mobileNo} | OTP: {otp.join("")}/6
             </p>
             <p style={styles.debugText}>
-              Timer: {formatTime(timer)} | Resend: {canResend ? "Yes" : "No"}
+              Timer: {formatTime(timer)} | Type: {isDemoSignup ? 'Demo' : 'Regular'}
             </p>
           </div>
         )}
@@ -518,19 +597,13 @@ function OTPVerificationPage() {
             from { opacity: 0; transform: translateY(-5px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          
-          @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-          }
         `}
       </style>
     </div>
   );
 }
 
-// Styles object
+// Styles object (same as before)
 const styles = {
   container: {
     minHeight: "100vh",

@@ -1,24 +1,83 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const LaunchDemo = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     companyEmail: '',
+    phoneNumber: '',
     country: ''
   });
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError('');
+  };
+
+  const validatePhoneNumber = (phone) => {
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Check if it's a valid 10-digit number
+    if (cleaned.length === 10) {
+      return cleaned;
+    }
+    
+    // Check if it starts with country code
+    if (cleaned.length === 12 && cleaned.startsWith('91')) {
+      return cleaned.slice(2);
+    }
+    
+    return null;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Demo Created:', formData);
-    // Add your demo creation logic here
+    setError('');
+    setIsSubmitting(true);
+
+    // Validate required fields
+    if (!formData.firstName || !formData.lastName || !formData.companyEmail || !formData.phoneNumber || !formData.country) {
+      setError('All fields are required');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.companyEmail)) {
+      setError('Please enter a valid email address');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate and clean phone number
+    const cleanedPhone = validatePhoneNumber(formData.phoneNumber);
+    if (!cleanedPhone) {
+      setError('Please enter a valid 10-digit mobile number');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Navigate to OTP verification with demo data
+    navigate('/otp-verification', {
+      state: {
+        formData: {
+          ...formData,
+          mobileNo: cleanedPhone,
+          isDemoSignup: true
+        }
+      }
+    });
+
+    setIsSubmitting(false);
   };
 
   return (
@@ -39,7 +98,7 @@ const LaunchDemo = () => {
             <p className="subtitle">Create your personalized demo in seconds</p>
           </div>
 
-          {/* Compact Phone Mockup */}
+          {/* Compact Phone Mockup - Hidden on mobile */}
           <div className="phone-showcase">
             <div className="phone-device">
               <div className="phone-screen">
@@ -83,21 +142,6 @@ const LaunchDemo = () => {
               <div className="phone-bottom"></div>
             </div>
           </div>
-
-          <div className="features-grid">
-            <div className="feature-badge">
-              <span className="badge-icon">⚡</span>
-              <span>Instant Setup</span>
-            </div>
-            <div className="feature-badge">
-              <span className="badge-icon">🔒</span>
-              <span>Secure</span>
-            </div>
-            <div className="feature-badge">
-              <span className="badge-icon">🌍</span>
-              <span>Global</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -107,7 +151,13 @@ const LaunchDemo = () => {
           <h2 className="form-title">Get Started Today</h2>
           <p className="form-description">Fill in your details to create a personalized demo</p>
 
-          <div className="demo-form">
+          {error && (
+            <div className="error-message">
+              ⚠️ {error}
+            </div>
+          )}
+
+          <form className="demo-form" onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
                 <label>First Name</label>
@@ -146,38 +196,46 @@ const LaunchDemo = () => {
             </div>
 
             <div className="form-group">
+              <label>Phone Number</label>
+              <input
+                type="tel"
+                name="phoneNumber"
+                placeholder="+91 98765 43210"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                required
+              />
+              <small style={{ color: '#666', fontSize: '12px', marginTop: '4px' }}>
+                Enter 10-digit mobile number for OTP verification
+              </small>
+            </div>
+
+            <div className="form-group">
               <label>Country</label>
-              <select
+              <input
+                type="text"
                 name="country"
+                placeholder="Enter your country"
                 value={formData.country}
                 onChange={handleChange}
                 required
-              >
-                <option value="">Select your country</option>
-                <option value="US">United States</option>
-                <option value="UK">United Kingdom</option>
-                <option value="IN">India</option>
-                <option value="CA">Canada</option>
-                <option value="AU">Australia</option>
-                <option value="DE">Germany</option>
-                <option value="FR">France</option>
-                <option value="JP">Japan</option>
-                <option value="SG">Singapore</option>
-                <option value="AE">UAE</option>
-              </select>
+              />
             </div>
 
-            <button onClick={handleSubmit} className="submit-btn">
+            <button type="submit" className="submit-btn" disabled={isSubmitting}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Launch Your Demo
+              {isSubmitting ? 'Processing...' : 'Launch Your Demo'}
             </button>
 
             <div className="form-footer">
               <p>🔒 Your information is safe and secure</p>
+              <p style={{ fontSize: '12px', marginTop: '8px', color: '#888' }}>
+                You'll receive an OTP for verification
+              </p>
             </div>
-          </div>
+          </form>
         </div>
       </div>
 
@@ -425,30 +483,6 @@ const LaunchDemo = () => {
           border-radius: 2px;
         }
 
-        .features-grid {
-          display: flex;
-          justify-content: center;
-          gap: 12px;
-          margin-top: 40px;
-        }
-
-        .feature-badge {
-          background: rgba(255, 255, 255, 0.2);
-          backdrop-filter: blur(10px);
-          padding: 10px 20px;
-          border-radius: 30px;
-          color: white;
-          font-size: 13px;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .badge-icon {
-          font-size: 16px;
-        }
-
         .right-section {
           flex: 1.1;
           padding: 60px;
@@ -476,6 +510,17 @@ const LaunchDemo = () => {
           margin-bottom: 40px;
         }
 
+        .error-message {
+          background: #ffe5e5;
+          border: 2px solid #ffcccc;
+          color: #d32f2f;
+          padding: 12px 16px;
+          border-radius: 10px;
+          margin-bottom: 20px;
+          font-size: 14px;
+          font-weight: 600;
+        }
+
         .demo-form {
           display: flex;
           flex-direction: column;
@@ -500,8 +545,7 @@ const LaunchDemo = () => {
           color: #333;
         }
 
-        .form-group input,
-        .form-group select {
+        .form-group input {
           padding: 14px 16px;
           border: 2px solid #e0e0e0;
           border-radius: 10px;
@@ -511,8 +555,7 @@ const LaunchDemo = () => {
           color: #000;
         }
 
-        .form-group input:focus,
-        .form-group select:focus {
+        .form-group input:focus {
           outline: none;
           border-color: #0025ff;
           box-shadow: 0 0 0 4px rgba(0, 37, 255, 0.1);
@@ -520,15 +563,6 @@ const LaunchDemo = () => {
 
         .form-group input::placeholder {
           color: #999;
-        }
-
-        .form-group select {
-          cursor: pointer;
-          appearance: none;
-          background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-          background-repeat: no-repeat;
-          background-position: right 16px center;
-          padding-right: 40px;
         }
 
         .submit-btn {
@@ -548,14 +582,19 @@ const LaunchDemo = () => {
           margin-top: 8px;
         }
 
-        .submit-btn:hover {
+        .submit-btn:hover:not(:disabled) {
           background: #0020cc;
           transform: translateY(-2px);
           box-shadow: 0 8px 20px rgba(0, 37, 255, 0.3);
         }
 
-        .submit-btn:active {
+        .submit-btn:active:not(:disabled) {
           transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .form-footer {
@@ -599,9 +638,8 @@ const LaunchDemo = () => {
             font-size: 28px;
           }
 
-          .phone-device {
-            width: 200px;
-            height: 400px;
+          .phone-showcase {
+            display: none;
           }
 
           .form-row {
@@ -612,28 +650,49 @@ const LaunchDemo = () => {
             font-size: 28px;
           }
 
-          .features-grid {
-            flex-wrap: wrap;
-          }
-
-          .feature-badge {
-            font-size: 12px;
-            padding: 8px 16px;
+          .brand-header {
+            margin-bottom: 20px;
           }
         }
 
         @media (max-width: 480px) {
-          .phone-device {
-            width: 180px;
-            height: 360px;
-          }
-
           .main-heading {
             font-size: 24px;
           }
 
+          .subtitle {
+            font-size: 16px;
+          }
+
+          .form-title {
+            font-size: 24px;
+          }
+
+          .form-description {
+            font-size: 14px;
+            margin-bottom: 30px;
+          }
+
+          .submit-btn {
+            padding: 14px 24px;
+            font-size: 15px;
+          }
+
+          .logo-badge {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 16px;
+          }
+
+          .logo-badge svg {
+            width: 24px;
+            height: 24px;
+          }
+        }
+
+        @media (min-width: 769px) {
           .phone-showcase {
-            margin: 30px 0;
+            display: flex;
           }
         }
       `}</style>

@@ -127,7 +127,12 @@ const Navbar = () => {
           <a href="#solutions" className="nav-link" onClick={(e) => {
             e.preventDefault();
             handleLinkClick('solutions');
-          }}>Solutions</a>
+          }}>About US</a>
+
+           <a href="#solutions" className="nav-link" onClick={(e) => {
+            e.preventDefault();
+            handleLinkClick('solutions');
+          }}>Why TraZio</a>
 
           <div
             className="nav-link-dropdown"
